@@ -12,6 +12,8 @@ const authRoutes = require('./routes/auth.routes');
 const storeRoutes = require('./routes/store.routes');
 const productRoutes = require('./routes/product.routes');
 const transactionRoutes = require('./routes/transaction.routes'); // Tambahkan ini
+const userRoutes = require('./routes/user.routes');
+const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/stores', productRoutes); // Products nested under stores
 app.use('/api/stores', transactionRoutes); // Tambahkan ini
+app.use('/api/stores', reportRoutes);
+app.use('/api', userRoutes);
 
 // Default route
 app.get('/', (req, res) => {

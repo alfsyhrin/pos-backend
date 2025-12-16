@@ -24,4 +24,7 @@ router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin']), 
 // **Add Endpoint for Statistics** (protected route)
 router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin']), ProductController.getStats); // New Route
 
+// Find Product by Barcode (protected route)
+router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), ProductController.findByBarcode);
+
 module.exports = router;

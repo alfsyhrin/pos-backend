@@ -340,6 +340,13 @@ async updateStock(productId, quantityChange) {
     [quantityChange, productId]
   );
   return result.affectedRows > 0;
+},
+async findByBarcode(storeId, barcode) {
+    const [rows] = await pool.execute(
+        `SELECT * FROM products WHERE store_id = ? AND barcode = ? LIMIT 1`,
+        [storeId, barcode]
+    );
+    return rows[0] || null;
 }
 };
 

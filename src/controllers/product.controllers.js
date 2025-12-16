@@ -325,6 +325,19 @@ const ProductController = {
             console.error('Get product stats error:', error);
             return response.error(res, 'Terjadi kesalahan saat mengambil statistik produk', 500, error);
         }
+    },
+
+    async findByBarcode(req, res) {
+        try {
+            const { store_id, barcode } = req.params;
+            const product = await ProductModel.findByBarcode(store_id, barcode);
+            if (!product) {
+                return response.notFound(res, 'Produk dengan barcode ini belum terdaftar');
+            }
+            return response.success(res, product, 'Produk ditemukan');
+        } catch (error) {
+            return response.error(res, error, 'Terjadi kesalahan saat mencari produk');
+        }
     }
 };
 

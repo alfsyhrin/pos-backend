@@ -1,0 +1,227 @@
+Baik, kita langsung GAS ke BAGIAN 4: Relasi Antar Semua Entitas (ERD FINAL LENGKAP DALAM TEKS)
+Struktur ini akan menjadi dasar backend Node.js, dasar API, dan dasar dokumentasi produk.
+Saya susun rapi, sistematis, dan komprehensif.
+________________________________________
+🔥 BAGIAN 4 — ERD FINAL SELURUH SISTEM (FORMAT TEKS LENGKAP)
+Untuk aplikasi:
+•	Multi-owner
+•	Multi-cabang (shop)
+•	Multi-role (owner, admin, kasir)
+•	Produk
+•	Transaksi kasir
+•	Paket berlangganan
+•	Pembayaran paket
+•	Manajemen toko
+•	Laporan
+•	Backup
+Saya susun dalam 3 blok utama:
+________________________________________
+📦 A. BLOK ENTITAS USER & ORGANISASI
+1. users (akun semua peran: owner, admin, kasir)
+Kolom:
+id (PK)
+full_name
+email
+username
+password_hash
+role ENUM('owner','admin','cashier')
+status ENUM('active','inactive')
+created_at
+updated_at
+________________________________________
+2. owners (Info khusus owner)
+Karena owner = user, namun pemilik aplikasi butuh data tambahan.
+id (PK)
+user_id (FK -> users.id)
+business_name
+business_phone
+business_email
+address
+created_at
+updated_at
+________________________________________
+3. shops (toko/cabang milik owner)
+id (PK)
+owner_id (FK -> owners.id)
+shop_name
+address
+phone
+receipt_header_text
+receipt_footer_text
+created_at
+updated_at
+Notes:
+•	Owner bisa punya banyak toko.
+•	Admin/kasir terkait toko tertentu.
+________________________________________
+4. shop_users (relasi user dengan toko)
+Kasir & admin hanya mengakses toko yang terdaftar di sini.
+id (PK)
+shop_id (FK -> shops.id)
+user_id (FK -> users.id)
+role_in_shop ENUM('admin','cashier')
+created_at
+updated_at
+Relasi:
+•	Owner tidak perlu masuk ke sini (owner bisa akses semua toko).
+•	Admin hanya satu toko (umumnya).
+•	Kasir bisa juga 1 toko (umumnya).
+________________________________________
+🛒 B. BLOK PRODUK & TRANSAKSI
+5. categories (opsional tapi dianjurkan)
+id (PK)
+owner_id (FK -> owners.id)
+name
+created_at
+updated_at
+Jika Anda ingin kategori satu per toko, cukup tambahkan shop_id nanti.
+________________________________________
+6. products
+id (PK)
+owner_id (FK -> owners.id)
+shop_id (FK -> shops.id)
+category_id (FK -> categories.id, nullable)
+name
+sku
+barcode
+purchase_price
+selling_price
+stock
+unit (pcs, box, kg, dll)
+status ENUM('active','inactive')
+created_at
+updated_at
+________________________________________
+7. transactions (transaksi kasir utama)
+id (PK)
+shop_id (FK -> shops.id)
+cashier_id (FK -> users.id)
+total_cost
+total_discount
+grand_total
+payment_method ENUM('cash','qris','transfer','ewallet')
+amount_paid
+change_return
+payment_status ENUM('paid','unpaid')
+note (opsional)
+created_at
+updated_at
+________________________________________
+8. transaction_items
+id (PK)
+transaction_id (FK -> transactions.id)
+product_id (FK -> products.id)
+qty
+price
+discount
+subtotal
+created_at
+updated_at
+________________________________________
+💳 C. BLOK SUBSCRIPTION & PEMBAYARAN PAKET
+9. packages (jenis paket)
+id (PK)
+name (Basic, Pro, etc)
+description
+price_monthly
+price_yearly
+max_shops
+max_users
+max_products
+max_transactions
+created_at
+updated_at
+________________________________________
+10. subscriptions (langganan owner)
+id (PK)
+owner_id (FK -> owners.id)
+package_id (FK -> packages.id)
+start_date
+end_date
+billing_cycle ENUM('monthly','yearly')
+status ENUM('active','expired','pending')
+created_at
+updated_at
+________________________________________
+11. subscription_payments (riwayat pembayaran paket)
+id (PK)
+subscription_id (FK -> subscriptions.id)
+amount
+payment_method ENUM('qris','transfer','creditcard','ewallet')
+payment_status ENUM('pending','success','failed')
+invoice_number
+paid_at
+created_at
+updated_at
+________________________________________
+⚙️ D. BLOK PENGATURAN & BACKUP
+12. backups
+id (PK)
+owner_id (FK -> owners.id)
+backup_type ENUM('full','products','transactions','employees')
+file_path
+created_at
+________________________________________
+📊 E. BLOK LAPORAN (OPSIONAL NANTI)
+Jika ingin lebih komplet, bisa tambahkan:
+13. reports_daily
+id (PK)
+shop_id (FK -> shops.id)
+date
+total_transactions
+total_income
+total_profit
+created_at
+________________________________________
+🔗 BAGIAN RELASI FINAL (Ringkas Padat)
+User & Organisasi
+•	owner 1—N shops
+•	owner 1—N packages (melalui subscription)
+•	shop 1—N shop_users
+•	shop_users N—1 users
+Produk
+•	shop 1—N products
+•	owner 1—N products
+•	category 1—N products
+Transaksi
+•	shop 1—N transactions
+•	user(cashier) 1—N transactions
+•	transaction 1—N transaction_items
+•	product 1—N transaction_items
+Subscription
+•	owner 1—N subscriptions
+•	subscription 1—N subscription_payments
+•	package 1—N subscriptions
+________________________________________
+🧱 ERD FINAL DALAM FORMAT TEKS RAPI SIAP COPY
+Saya gabungkan semua entitas dalam satu blok readable:
+users (id PK, full_name, email, username, password_hash, role, status, created_at, updated_at)
+
+owners (id PK, user_id FK, business_name, business_phone, business_email, address, created_at, updated_at)
+
+shops (id PK, owner_id FK, shop_name, address, phone, receipt_header_text, receipt_footer_text, created_at, updated_at)
+
+shop_users (id PK, shop_id FK, user_id FK, role_in_shop, created_at, updated_at)
+
+categories (id PK, owner_id FK, name, created_at, updated_at)
+
+products (id PK, owner_id FK, shop_id FK, category_id FK, name, sku, barcode, purchase_price, selling_price, stock, unit, status, created_at, updated_at)
+
+transactions (id PK, shop_id FK, cashier_id FK, total_cost, total_discount, grand_total, payment_method, amount_paid, change_return, payment_status, note, created_at, updated_at)
+
+transaction_items (id PK, transaction_id FK, product_id FK, qty, price, discount, subtotal, created_at, updated_at)
+
+packages (id PK, name, description, price_monthly, price_yearly, max_shops, max_users, max_products, max_transactions, created_at, updated_at)
+
+subscriptions (id PK, owner_id FK, package_id FK, start_date, end_date, billing_cycle, status, created_at, updated_at)
+
+subscription_payments (id PK, subscription_id FK, amount, payment_method, payment_status, invoice_number, paid_at, created_at, updated_at)
+
+backups (id PK, owner_id FK, backup_type, file_path, created_at)
+________________________________________
+🔥 Jika sudah beres, saya lanjutkan BAGIAN 5: Class Diagram, API Structure, Flow Sistem.
+Anda tinggal jawab:
+“Gas lanjut bagian 5”
+atau
+“Ada revisi dulu sebelum lanjut?”
+

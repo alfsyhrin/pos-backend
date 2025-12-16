@@ -3,7 +3,7 @@ require('dotenv').config();
 // Import app yang sudah lengkap dari app.js
 const app = require('./app');
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 
 // Start server
 app.listen(PORT, () => {
