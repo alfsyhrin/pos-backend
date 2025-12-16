@@ -8,49 +8,78 @@ const AuthController = {
   async login(req, res) {
     let tenantConn;
     try {
-      const { identifier, password, owner_id } = req.body;
+      const { identifier, password, owner_id: ownerIdFromBody } = req.body;
       if (!identifier || !password) return res.status(400).json({ success: false, message: 'Identifier dan password harus diisi' });
 
       let user = null;
       let db_name = null;
       let userType = 'user';
+      let ownerIdForToken = null;
 
       if (identifier.includes('@')) {
+        // owner login by email (unchanged)
         user = await UserModel.findOwnerByEmail(identifier);
         userType = 'owner';
         if (user) {
           const ownerIdForClient = user.owner_id || user.id;
           const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForClient]);
           db_name = clients[0]?.db_name || null;
-
           if (!db_name) {
             const expectedDb = `kasir_tenant_${ownerIdForClient}`;
             const [dbRows] = await db.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [expectedDb]);
-            if (dbRows.length) {
-              db_name = expectedDb;
-              console.warn(`Login fallback: found DB ${expectedDb} but no clients entry for owner_id=${ownerIdForClient}. Consider running register_client to persist clients row.`);
-            } else {
-              console.warn(`No clients row and no DB for owner_id=${ownerIdForClient}`);
+            if (dbRows.length) db_name = expectedDb;
+          }
+          ownerIdForToken = user.owner_id || user.id;
+        }
+      } else {
+        // username login (admin/kasir) — try body.owner_id first, otherwise autodetect across tenants
+        let detectedOwnerId = ownerIdFromBody || null;
+
+        if (!detectedOwnerId) {
+          // scan clients to find which tenant has this username
+          const [clients] = await db.query('SELECT owner_id, db_name FROM clients');
+          for (const c of clients) {
+            let tmpConn;
+            try {
+              tmpConn = await getTenantConnection(c.db_name);
+              const found = await UserModel.findByUsername(tmpConn, identifier);
+              if (found) {
+                user = found;
+                detectedOwnerId = c.owner_id;
+                db_name = c.db_name;
+                tenantConn = tmpConn; // keep open for password check and further queries
+                tmpConn = null; // prevent double-close
+                break;
+              }
+            } catch (err) {
+              // skip tenant on error, continue scanning
+              console.warn(`tenant scan failed for ${c.db_name}: ${err.message}`);
+            } finally {
+              if (tmpConn) await tmpConn.end();
             }
           }
         }
-      } else {
-        if (!owner_id) return res.status(400).json({ success: false, message: 'owner_id harus diisi untuk login admin/kasir' });
-        const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [owner_id]);
-        db_name = clients[0]?.db_name || null;
-        if (!db_name) return res.status(404).json({ success: false, message: 'Tenant tidak ditemukan' });
 
-        tenantConn = await getTenantConnection(db_name);
-        user = await UserModel.findByUsername(tenantConn, identifier);
-        userType = user?.role || 'user';
+        // if still not found but owner_id provided, use that
+        if (!user && detectedOwnerId) {
+          const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [detectedOwnerId]);
+          db_name = clients[0]?.db_name || null;
+          if (db_name) {
+            tenantConn = await getTenantConnection(db_name);
+            user = await UserModel.findByUsername(tenantConn, identifier);
+          }
+        }
+
+        if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
+
+        userType = user.role || 'user';
+        ownerIdForToken = detectedOwnerId || user.owner_id || null;
       }
 
-      if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-
+      // password check (same as before)
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
-      const ownerIdForToken = user.owner_id || user.id;
       const payload = {
         id: user.id,
         owner_id: ownerIdForToken,
