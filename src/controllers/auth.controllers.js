@@ -22,11 +22,12 @@ const AuthController = {
                 user = await UserModel.findOwnerByEmail(identifier);
                 userType = 'owner';
                 if (user) {
-                    const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [user.id]);
+                    const ownerIdForClient = user.owner_id || user.id;
+                    const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForClient]);
                     dbName = clients[0]?.db_name || null;
                 }
             } else {
-                // ADMIN/KASIR (username) -> but needs owner_id to identify tenant
+                // ADMIN/KASIR (username) -> needs owner_id
                 if (!owner_id) {
                     return res.status(400).json({ success: false, message: 'owner_id harus diisi untuk login admin/kasir' });
                 }
@@ -39,14 +40,10 @@ const AuthController = {
                 userType = user?.role || 'user';
             }
 
-            if (!user) {
-                return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-            }
+            if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
             const isPasswordValid = await bcrypt.compare(password, user.password);
-            if (!isPasswordValid) {
-                return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-            }
+            if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
             const userData = {
                 id: user.id,
@@ -61,12 +58,7 @@ const AuthController = {
 
             const token = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
-            res.json({
-                success: true,
-                message: 'Login berhasil',
-                token,
-                user: userData
-            });
+            res.json({ success: true, message: 'Login berhasil', token, user: userData });
         } catch (error) {
             console.error('Login error:', error);
             res.status(500).json({ success: false, message: 'Terjadi kesalahan server', error: error.message });
