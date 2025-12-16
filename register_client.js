@@ -36,6 +36,12 @@ async function registerClient({
     [owner_id, business_name, email, phone, password]
   );
 
+  // 2a. Tambahkan owner ke tabel users (agar bisa login via API user)
+  await conn.execute(
+    `INSERT INTO users (owner_id, store_id, name, username, password, role, is_active) VALUES (?, NULL, ?, ?, ?, 'owner', 1)`,
+    [owner_id, business_name, email, password]
+  );
+
   // 3. Buat database tenant baru
   await conn.execute(`CREATE DATABASE ${db_name}`);
 
