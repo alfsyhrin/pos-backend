@@ -43,7 +43,7 @@ async function registerClient({
   // 2a. Tambahkan owner ke tabel users (agar bisa login via API user)
   await conn.execute(
     `INSERT INTO users (owner_id, store_id, name, username, password, role, is_active) VALUES (?, NULL, ?, ?, ?, 'owner', 1)`,
-    [owner_id, business_name, email, hashedPassword]
+    [owner_id, business_name, username, email, hashedPassword]
   );
 
   // 3. Buat database tenant baru
@@ -86,9 +86,10 @@ async function registerClient({
 // ==== SIMULASI PEMBELIAN MANUAL ====
 // Ganti data di bawah sesuai pembeli baru
 registerClient({
-  owner_id: 4,
-  business_name: 'Betarak',
-  email: 'betarak@gmail.com',
+  owner_id: 8,
+  business_name: 'kecil',
+  username: "vice",
+  email: 'vice@gmail.com',
   phone: '081234567899',
   password: 'password123', // plain password!
   plan: 'Pro',
