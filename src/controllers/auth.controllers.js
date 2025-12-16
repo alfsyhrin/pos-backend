@@ -25,6 +25,21 @@ const AuthController = {
                     const ownerIdForClient = user.owner_id || user.id;
                     const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForClient]);
                     dbName = clients[0]?.db_name || null;
+
+                    if (!dbName) {
+                        // fallback: cek apakah database kasir_tenant_<ownerId> sudah ada
+                        const expectedDb = `kasir_tenant_${ownerIdForClient}`;
+                        const [dbRows] = await db.query(
+                            'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+                            [expectedDb]
+                        );
+                        if (dbRows.length) {
+                            dbName = expectedDb;
+                            console.warn(`Login fallback: found DB ${expectedDb} but no clients entry for owner_id=${ownerIdForClient}. Consider running register_client to persist clients row.`);
+                        } else {
+                            console.warn(`No clients row and no DB for owner_id=${ownerIdForClient}`);
+                        }
+                    }
                 }
             } else {
                 // ADMIN/KASIR (username) -> needs owner_id
