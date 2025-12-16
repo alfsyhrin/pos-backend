@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 16 Des 2025 pada 05.41
+-- Waktu pembuatan: 16 Des 2025 pada 14.06
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -20,6 +20,21 @@ SET time_zone = "+00:00";
 --
 -- Database: `kasir_multi_tenant`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `clients`
+--
+
+CREATE TABLE `clients` (
+  `id` int(11) NOT NULL,
+  `owner_id` int(11) DEFAULT NULL,
+  `db_name` varchar(100) DEFAULT NULL,
+  `db_user` varchar(100) DEFAULT NULL,
+  `db_password` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -78,21 +93,21 @@ CREATE TABLE `products` (
 -- Dumping data untuk tabel `products`
 --
 
-INSERT INTO `products` (`id`, `store_id`, `name`, `sku`, `price`, `stock`, `category`, `description`, `image_url`, `is_active`, `created_at`, `updated_at`, `jenis_diskon`, `nilai_diskon`, `diskon_bundle_min_qty`, `diskon_bundle_value`, `buy_qty`, `free_qty`) VALUES
-(21, 2, 'Indomie Goreng', 'IND-001', 3500.00, 100, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(22, 2, 'Aqua 600ml', 'AQU-001', 3000.00, 50, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(23, 2, 'Rokok Sampoerna Mild', 'ROK-001', 27000.00, 20, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(24, 2, 'Pepsodent 100g', 'PEP-001', 8500.00, 30, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(25, 2, 'Sunlight 200ml', 'SUN-001', 5000.00, 15, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(26, 2, 'Buku Tulis Sidu', 'BUK-001', 4500.00, 200, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(27, 3, 'Pulpen Pilot', 'PUL-001', 3000.00, 150, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(28, 3, 'Penghapus Faber', 'PEN-001', 2000.00, 100, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(29, 3, 'Kopi Kapal Api', 'KOP-001', 12000.00, 40, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(30, 3, 'Gula Gulaku 1kg', 'GUL-001', 15000.00, 25, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
-(39, 2, 'Indomie', 'IND-100', 3150.00, 100, NULL, NULL, 'http://example.com/image.jpg', 1, '2025-12-14 18:30:18', '2025-12-14 18:30:18', NULL, NULL, NULL, NULL, NULL, NULL),
-(42, 2, 'Sunscreen SPF 50', 'SKN-001', 50000.00, 50, 'Kesehatan & Kecantikan', 'Sunscreen untuk perlindungan maksimal', 'https://example.com/sunscreen.jpg', 1, '2025-12-15 14:24:44', '2025-12-15 14:24:44', 'percentage', 10.00, NULL, NULL, NULL, NULL),
-(43, 2, 'Pop Mie', 'POP-001', 8000.00, 200, 'Makanan & Minuman', 'Pop Mie semua rasa', 'https://example.com/popmie.jpg', 1, '2025-12-15 14:26:04', '2025-12-15 14:26:04', '', NULL, NULL, NULL, 2, 1),
-(45, 2, 'Pop Mie Pedas', 'POP-002', 8000.00, 200, 'Makanan & Minuman', 'Pop Mie semua rasa', 'https://example.com/popmie.jpg', 1, '2025-12-15 14:30:16', '2025-12-15 14:30:16', '', NULL, NULL, NULL, 2, 1);
+INSERT INTO `products` (`id`, `store_id`, `name`, `sku`, `barcode`, `price`, `stock`, `category`, `description`, `image_url`, `is_active`, `created_at`, `updated_at`, `jenis_diskon`, `nilai_diskon`, `diskon_bundle_min_qty`, `diskon_bundle_value`, `buy_qty`, `free_qty`) VALUES
+(21, 2, 'Indomie Goreng', 'IND-001', NULL, 3500.00, 100, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(22, 2, 'Aqua 600ml', 'AQU-001', NULL, 3000.00, 50, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(23, 2, 'Rokok Sampoerna Mild', 'ROK-001', NULL, 27000.00, 20, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(24, 2, 'Pepsodent 100g', 'PEP-001', NULL, 8500.00, 30, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(25, 2, 'Sunlight 200ml', 'SUN-001', NULL, 5000.00, 15, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(26, 2, 'Buku Tulis Sidu', 'BUK-001', NULL, 4500.00, 200, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(27, 3, 'Pulpen Pilot', 'PUL-001', NULL, 3000.00, 150, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(28, 3, 'Penghapus Faber', 'PEN-001', NULL, 2000.00, 100, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(29, 3, 'Kopi Kapal Api', 'KOP-001', NULL, 12000.00, 40, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(30, 3, 'Gula Gulaku 1kg', 'GUL-001', NULL, 15000.00, 25, NULL, NULL, NULL, 1, '2025-12-13 22:58:48', '2025-12-13 22:58:48', NULL, NULL, NULL, NULL, NULL, NULL),
+(39, 2, 'Indomie', 'IND-100', NULL, 3150.00, 100, NULL, NULL, 'http://example.com/image.jpg', 1, '2025-12-14 18:30:18', '2025-12-14 18:30:18', NULL, NULL, NULL, NULL, NULL, NULL),
+(42, 2, 'Sunscreen SPF 50', 'SKN-001', NULL, 50000.00, 50, 'Kesehatan & Kecantikan', 'Sunscreen untuk perlindungan maksimal', 'https://example.com/sunscreen.jpg', 1, '2025-12-15 14:24:44', '2025-12-15 14:24:44', 'percentage', 10.00, NULL, NULL, NULL, NULL),
+(43, 2, 'Pop Mie', 'POP-001', NULL, 8000.00, 200, 'Makanan & Minuman', 'Pop Mie semua rasa', 'https://example.com/popmie.jpg', 1, '2025-12-15 14:26:04', '2025-12-15 14:26:04', '', NULL, NULL, NULL, 2, 1),
+(45, 2, 'Pop Mie Pedas', 'POP-002', NULL, 8000.00, 200, 'Makanan & Minuman', 'Pop Mie semua rasa', 'https://example.com/popmie.jpg', 1, '2025-12-15 14:30:16', '2025-12-15 14:30:16', '', NULL, NULL, NULL, 2, 1);
 
 -- --------------------------------------------------------
 
@@ -244,11 +259,20 @@ INSERT INTO `users` (`id`, `owner_id`, `store_id`, `name`, `username`, `password
 (2, 1, NULL, 'Kasir Toko 1', 'kasir1', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'cashier', 1, '2025-12-13 20:22:56'),
 (3, 1, 2, 'Admin Toko 2', 'admin2', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'admin', 1, '2025-12-13 20:22:56'),
 (4, 2, 3, 'Owner Warung', 'owner2', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'owner', 1, '2025-12-13 20:22:56'),
-(6, 2, 2, 'Kasir Toko 1', 'kasir2', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'cashier', 1, '2025-12-13 20:22:56');
+(6, 2, 2, 'Kasir Toko 1', 'kasir2', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'cashier', 1, '2025-12-13 20:22:56'),
+(7, 1, 3, 'A Ming Lang', 'abyan db', '$2a$10$.1d6qwVFuli9CKxen9MEmOxY75d1e4qGpO56RwENLmVGoEOS9WxiK', 'cashier', 1, '2025-12-16 08:20:29'),
+(9, 2, 3, 'Abyan Dzakwan B.', 'abyan', '$2a$10$yuUDa0SguXpVksWw6NkuU.axyLM4THmnVT0vv1piWJgweFXWneANC', 'cashier', 1, '2025-12-16 09:31:31'),
+(11, 1, 2, 'Owner Warung 1', 'owner1', '$2b$10$dmsdKZmlAFTBnZ0wmSXhM.i.7Bu0PPvEW1h/EK2oq28Bl2YEHSmhu', 'owner', 1, '2025-12-13 20:22:56');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indeks untuk tabel `clients`
+--
+ALTER TABLE `clients`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indeks untuk tabel `owners`
@@ -318,6 +342,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT untuk tabel `clients`
+--
+ALTER TABLE `clients`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT untuk tabel `owners`
 --
 ALTER TABLE `owners`
@@ -363,7 +393,7 @@ ALTER TABLE `transaction_items`
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
