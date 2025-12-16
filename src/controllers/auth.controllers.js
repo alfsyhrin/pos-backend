@@ -19,7 +19,7 @@ const AuthController = {
             // === OWNER LOGIN ===
             if (identifier.includes('@')) {
                 // Cek ke database utama
-                user = await UserModel.findOwnerByEmail(db, identifier);
+                user = await UserModel.findOwnerByEmail(identifier);
                 userType = 'owner';
 
                 // Ambil db_name tenant dari tabel clients
