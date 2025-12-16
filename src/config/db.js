@@ -3,10 +3,12 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
 });
 
 // Test connection dengan auto-retry
@@ -38,12 +40,25 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 const getTenantConnection = async (dbName) => {
-  return await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: dbName,
-  });
+    if (!dbName) {
+        throw new Error('Tenant database name (dbName) is required');
+    }
+
+    const conn = await mysql.createConnection({
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: dbName,
+    });
+
+    // verify database selected / exists
+    const [rows] = await conn.query('SELECT DATABASE() AS db');
+    if (!rows[0] || !rows[0].db) {
+        await conn.end();
+        throw new Error(`Database "${dbName}" does not exist or could not be selected`);
+    }
+
+    return conn;
 };
 
 module.exports = pool;

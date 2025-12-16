@@ -11,39 +11,44 @@ const USER_LIMITS = {
 const UserController = {
     // List user by store
     async listByStore(req, res) {
+        let conn;
         try {
             const { store_id } = req.params;
-            const dbName = req.user.db_name;
-            const conn = await getTenantConnection(dbName);
+            const dbName = req.user?.db_name;
+            if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
+            console.log('Listing users in tenant:', dbName);
+            conn = await getTenantConnection(dbName);
             const users = await UserModel.findByStore(conn, store_id);
             res.json({ success: true, data: users });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal mengambil data user', error: error.message });
+        } finally {
+            if (conn) await conn.end();
         }
     },
 
     // Create user
     async create(req, res) {
+        let conn;
         try {
             const { store_id } = req.params;
             const { name, username, password, role } = req.body;
             const owner_id = req.user.owner_id;
-            const dbName = req.user.db_name;
-            const conn = await getTenantConnection(dbName);
+            const dbName = req.user?.db_name;
+            if (!dbName) return res.status(400).json({ success: false, message: 'Tenant database (db_name) tidak ditemukan di token.' });
 
-            // --- PEMBATASAN JUMLAH USER BERDASARKAN PLAN ---
-            // Ambil plan dari subscriptions di database utama
+            console.log('Creating user in tenant:', dbName, 'owner_id:', owner_id);
+            conn = await getTenantConnection(dbName);
+
             const pool = require('../config/db');
             const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
             const plan = subs[0]?.plan || 'Standard';
             const maxUser = USER_LIMITS[plan];
 
-            // Hitung jumlah user di tenant ini
             const [users] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ?', [owner_id]);
             if (users[0].total >= maxUser) {
                 return res.status(400).json({ message: 'Batas jumlah user sudah tercapai untuk paket ini.' });
             }
-            // --- END PEMBATASAN ---
 
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create(conn, {
@@ -52,20 +57,24 @@ const UserController = {
             res.status(201).json({ success: true, message: 'User berhasil ditambah', id: userId });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal menambah user', error: error.message });
+        } finally {
+            if (conn) await conn.end();
         }
     },
 
     // Update user
     async update(req, res) {
+        let conn;
         try {
             const { id } = req.params;
             const { name, username, password, role, is_active } = req.body;
-            const dbName = req.user.db_name;
-            const conn = await getTenantConnection(dbName);
+            const dbName = req.user?.db_name;
+            if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
+            conn = await getTenantConnection(dbName);
 
             const userToUpdate = await UserModel.findById(conn, id);
+            if (!userToUpdate) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
 
-            // Cek hak akses
             if (req.user.role === 'admin' && userToUpdate.store_id !== req.user.store_id) {
                 return res.status(403).json({ success: false, message: 'Admin hanya bisa update user di tokonya.' });
             }
@@ -84,19 +93,25 @@ const UserController = {
             res.json({ success: true, message: 'User berhasil diupdate' });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal update user', error: error.message });
+        } finally {
+            if (conn) await conn.end();
         }
     },
 
     // Delete (nonaktifkan) user
     async delete(req, res) {
+        let conn;
         try {
             const { id } = req.params;
-            const dbName = req.user.db_name;
-            const conn = await getTenantConnection(dbName);
+            const dbName = req.user?.db_name;
+            if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
+            conn = await getTenantConnection(dbName);
             await UserModel.update(conn, id, { is_active: 0 });
             res.json({ success: true, message: 'User berhasil dinonaktifkan' });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal hapus user', error: error.message });
+        } finally {
+            if (conn) await conn.end();
         }
     }
 };
