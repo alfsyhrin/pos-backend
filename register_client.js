@@ -81,6 +81,7 @@ async function registerClient({
   });
 
   try {
+    // pastikan ada row owners di tenant
     const [ownerRows] = await tenantConn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
     if (ownerRows.length === 0) {
       try {
@@ -103,6 +104,42 @@ async function registerClient({
       }
     } else {
       console.log('Owner already exists in tenant owners table:', db_name);
+    }
+
+    // pastikan ada default store untuk owner di tenant (buat jika belum ada)
+    const [storeRows] = await tenantConn.query('SELECT id FROM stores WHERE owner_id = ? LIMIT 1', [owner_id]);
+    let defaultStoreId;
+    if (storeRows.length === 0) {
+      try {
+        const [r] = await tenantConn.execute(
+          'INSERT INTO stores (owner_id, name, created_at) VALUES (?, ?, NOW())',
+          [owner_id, `${business_name} Store`]
+        );
+        defaultStoreId = r.insertId;
+        console.log('Default store created in tenant:', db_name, 'store_id:', defaultStoreId);
+      } catch (err) {
+        console.error('Failed to create default store in tenant:', db_name, err.message);
+        defaultStoreId = null;
+      }
+    } else {
+      defaultStoreId = storeRows[0].id;
+      console.log('Default store exists in tenant:', db_name, 'store_id:', defaultStoreId);
+    }
+
+    // pastikan owner user ada di tabel users tenant (gunakan defaultStoreId)
+    const [ownerUserRows] = await tenantConn.query('SELECT id FROM users WHERE owner_id = ? AND role = "owner" LIMIT 1', [owner_id]);
+    if (ownerUserRows.length === 0) {
+      try {
+        await tenantConn.execute(
+          'INSERT INTO users (owner_id, store_id, name, username, email, password, role, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, "owner", 1, NOW())',
+          [owner_id, defaultStoreId, business_name, username || email, email, hashedPassword]
+        );
+        console.log('Owner user inserted into tenant users table:', db_name);
+      } catch (err) {
+        console.error('Failed to insert owner user into tenant users table:', db_name, err.message);
+      }
+    } else {
+      console.log('Owner user already exists in tenant users table:', db_name);
     }
   } finally {
     await tenantConn.end();
