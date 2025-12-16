@@ -82,7 +82,7 @@ async function registerClient({
 // ==== SIMULASI PEMBELIAN MANUAL ====
 // Ganti data di bawah sesuai pembeli baru
 registerClient({
-  owner_id: 5,
+  owner_id: 3,
   business_name: 'Betarak',
   email: 'betarak@gmail.com',
   phone: '081234567899',
