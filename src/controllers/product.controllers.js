@@ -1,6 +1,19 @@
 const ProductModel = require('../models/product.model'); // Pastikan jalur relatifnya benar
 const response = require('../utils/response'); // Pastikan jalur relatifnya benar
+const db = require('../config/db'); // Tambahkan ini jika belum ada
+const path = require('path');
 
+const PRODUCT_LIMITS = {
+  'Standard': 100,
+  'Pro': 1000,
+  'Eksklusif': 10000
+};
+
+const IMAGE_LIMITS = {
+  'Standard': 0,
+  'Pro': 100,
+  'Eksklusif': 10000
+};
 
 const ProductController = {
     // Create new product with discount logic
@@ -13,6 +26,33 @@ const ProductController = {
                 diskon_bundle_min_qty, diskon_bundle_value,
                 buy_qty, free_qty, description
             } = req.body;
+
+            const owner_id = req.user.owner_id; // Ambil dari token
+
+            // --- PEMBATASAN JUMLAH PRODUK BERDASARKAN PLAN ---
+            const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
+            const plan = subs[0]?.plan || 'Standard';
+            const maxProduct = PRODUCT_LIMITS[plan];
+
+            // Hitung jumlah produk
+            const [products] = await db.query('SELECT COUNT(*) AS total FROM products WHERE owner_id = ?', [owner_id]);
+            if (products[0].total >= maxProduct) {
+                return res.status(400).json({ message: 'Batas jumlah produk sudah tercapai untuk paket ini.' });
+            }
+            // --- END PEMBATASAN ---
+
+            // --- PEMBATASAN PRODUK BERGAMBAR ---
+            if (image_url) {
+                const maxImage = IMAGE_LIMITS[plan];
+                const [count] = await db.query(
+                  'SELECT COUNT(*) AS total FROM products WHERE owner_id = ? AND image_url IS NOT NULL AND image_url != ""',
+                  [owner_id]
+                );
+                if (count[0].total >= maxImage) {
+                    return res.status(400).json({ message: 'Batas produk bergambar sudah tercapai untuk paket ini.' });
+                }
+            }
+            // --- END PEMBATASAN ---
 
             // Pastikan semua field null jika tidak ada
             const productData = {
@@ -337,6 +377,23 @@ const ProductController = {
             return response.success(res, product, 'Produk ditemukan');
         } catch (error) {
             return response.error(res, error, 'Terjadi kesalahan saat mencari produk');
+        }
+    },
+
+    async uploadProductImage(req, res) {
+        try {
+            const owner_id = req.user.owner_id;
+            const { product_id } = req.body;
+            if (!req.file) {
+                return res.status(400).json({ message: 'File gambar tidak ditemukan' });
+            }
+            // Path relatif untuk disimpan di DB
+            const imagePath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+            // Update image_url produk
+            await db.query('UPDATE products SET image_url = ? WHERE id = ?', [imagePath, product_id]);
+            res.json({ success: true, image_url: imagePath });
+        } catch (error) {
+            res.status(500).json({ message: 'Gagal upload gambar', error: error.message });
         }
     }
 };

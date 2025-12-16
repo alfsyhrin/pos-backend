@@ -108,3 +108,12 @@ CREATE TABLE subscriptions (
   end_date TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER,
+  db_name TEXT,
+  db_user TEXT,
+  db_password TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

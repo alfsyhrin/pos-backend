@@ -517,6 +517,17 @@ MIT
     }
     ```
 
+### Upload Gambar Produk
+POST /api/products/upload-image
+Headers: Authorization: Bearer {token}
+Body: form-data
+image: file gambar produk
+product_id: ID produk yang akan diupdate gambarnya
+Response:
+{
+  "success": true,
+  "image_url": "uploads/tenant_1/1702730000000-nama-gambar.jpg"
+}
 ---
 
 > **Catatan:**  

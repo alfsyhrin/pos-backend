@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
-// Test database connection
-require('./config/db')
-  .query('SELECT 1')
+const pool = require('./config/db');
+pool.query('SELECT 1')
   .then(() => console.log('✅ DB CONNECTED'))
   .catch(err => console.error('❌ DB ERROR', err));
 
@@ -26,13 +26,14 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/stores', storeRoutes);
-app.use('/api/stores', productRoutes); // Products nested under stores
 app.use('/api/stores', transactionRoutes); // Tambahkan ini
 app.use('/api/stores', reportRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api', userRoutes);
 
 // Default route

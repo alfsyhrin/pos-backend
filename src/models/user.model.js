@@ -6,14 +6,7 @@ const UserModel = {
     async findByUsername(username) {
         try {
             const [rows] = await pool.execute(
-                `SELECT 
-                    u.*, 
-                    o.business_name,
-                    s.name as store_name
-                FROM users u
-                LEFT JOIN owners o ON u.owner_id = o.id
-                LEFT JOIN stores s ON u.store_id = s.id
-                WHERE u.username = ? AND u.is_active = 1`,
+                'SELECT * FROM users WHERE username = ?',
                 [username]
             );
             return rows[0] || null;
@@ -26,7 +19,7 @@ const UserModel = {
     async findOwnerByEmail(email) {
         try {
             const [rows] = await pool.execute(
-                'SELECT * FROM owners WHERE email = ?',
+                'SELECT * FROM users WHERE email = ? AND role = "owner"',
                 [email]
             );
             return rows[0] || null;

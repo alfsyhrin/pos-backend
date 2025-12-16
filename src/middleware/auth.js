@@ -23,7 +23,8 @@ const authMiddleware = (roles = []) => {
                 owner_id: decoded.owner_id,
                 store_id: decoded.store_id,
                 role: decoded.role,
-                username: decoded.username
+                username: decoded.username,
+                db_name: decoded.db_name // <-- ini penting!
             };
 
             // 4. Check role authorization (if roles array is provided)

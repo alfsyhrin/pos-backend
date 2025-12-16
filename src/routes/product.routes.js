@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ProductController = require('../controllers/product.controllers');  // Pastikan jalur relatifnya benar
 const authMiddleware = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // Create Product (protected route)
 router.post('/:store_id/products', authMiddleware(['owner', 'admin']), ProductController.create);
@@ -26,5 +27,8 @@ router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin']), Prod
 
 // Find Product by Barcode (protected route)
 router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), ProductController.findByBarcode);
+
+// Endpoint upload gambar produk
+router.post('/upload-image', authMiddleware(['owner', 'admin']), upload.single('image'), ProductController.uploadProductImage);
 
 module.exports = router;

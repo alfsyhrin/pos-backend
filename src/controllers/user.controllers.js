@@ -1,5 +1,12 @@
 const UserModel = require('../models/user.model');
 const bcrypt = require('bcryptjs');
+const db = require('../config/db'); // Tambahkan ini jika belum ada
+
+const USER_LIMITS = {
+  'Standard': 1, // hanya owner
+  'Pro': 6,      // 1 owner + 1 admin + 4 kasir
+  'Eksklusif': 11 // 1 owner + 2 admin + 8 kasir
+};
 
 const UserController = {
     // List user by store
@@ -19,6 +26,20 @@ const UserController = {
             const { store_id } = req.params;
             const { name, username, password, role } = req.body;
             const owner_id = req.user.owner_id; // Ambil dari token
+
+            // --- PEMBATASAN JUMLAH USER BERDASARKAN PLAN ---
+            // Ambil plan dari subscriptions
+            const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
+            const plan = subs[0]?.plan || 'Standard';
+            const maxUser = USER_LIMITS[plan];
+
+            // Hitung jumlah user di tenant ini
+            const [users] = await db.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ?', [owner_id]);
+            if (users[0].total >= maxUser) {
+                return res.status(400).json({ message: 'Batas jumlah user sudah tercapai untuk paket ini.' });
+            }
+            // --- END PEMBATASAN ---
+
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create({
                 owner_id, store_id, name, username, password: hashed, role

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AuthController = require('../controllers/auth.controllers');
-const authMiddleware = require('../middleware/auth'); // HANYA INI
+const authMiddleware = require('../middleware/auth');
 
 // Public routes
 router.post('/login', AuthController.login);
