@@ -31,16 +31,21 @@ const UserController = {
     async create(req, res) {
         let conn;
         try {
-            const { store_id } = req.params;
-            const { name, username, password, role } = req.body;
+            const storeIdFromParams = req.params.store_id;
+            const { store_id: store_id_from_body, name, username, password, role } = req.body;
+            const store_id = (store_id_from_body !== undefined) ? store_id_from_body : storeIdFromParams || null;
+
             const owner_id = req.user.owner_id;
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Tenant database (db_name) tidak ditemukan di token.' });
 
-            console.log('Creating user in tenant:', dbName, 'owner_id:', owner_id);
+            if ((role === 'admin' || role === 'cashier') && !store_id) {
+                return res.status(400).json({ success: false, message: 'store_id harus diisi untuk role admin atau cashier.' });
+            }
+
+            console.log('Creating user in tenant:', dbName, 'owner_id:', owner_id, 'store_id:', store_id);
             conn = await getTenantConnection(dbName);
 
-            // --- cek owner di tenant (hindari FK constraint failure) ---
             const [ownerRows] = await conn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
             if (ownerRows.length === 0) {
                 return res.status(500).json({
@@ -48,8 +53,17 @@ const UserController = {
                     message: 'Owner tidak ditemukan di database tenant. Jalankan register client atau sinkronisasi owner terlebih dahulu.'
                 });
             }
-            // --- end cek owner ---
-            
+
+            if (store_id) {
+                const [storeRows] = await conn.query('SELECT id, owner_id FROM stores WHERE id = ?', [store_id]);
+                if (storeRows.length === 0) {
+                    return res.status(400).json({ success: false, message: 'Store tidak ditemukan di tenant.' });
+                }
+                if (storeRows[0].owner_id && storeRows[0].owner_id !== owner_id) {
+                    return res.status(403).json({ success: false, message: 'Store tidak dimiliki oleh owner yang sama.' });
+                }
+            }
+
             const pool = require('../config/db');
             const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
             const plan = subs[0]?.plan || 'Standard';

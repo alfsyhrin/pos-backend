@@ -72,8 +72,7 @@ async function registerClient({
     );
   });
 
-  // --- baru: sinkronisasi owner ke tenant owners table ---
-  // hubungkan ke tenant dan pastikan ada row owner dengan id yang sama
+  // setelah import schema berhasil, tambahkan sinkronisasi owner ke tenant
   const tenantConn = await mysql.createConnection({
     host: DB_HOST,
     user: DB_USER,
@@ -84,7 +83,6 @@ async function registerClient({
   try {
     const [ownerRows] = await tenantConn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
     if (ownerRows.length === 0) {
-      // coba insert dengan kolom umum; jika gagal, coba alternatif
       try {
         await tenantConn.execute(
           'INSERT INTO owners (id, name, email, created_at) VALUES (?, ?, ?, NOW())',
@@ -136,12 +134,12 @@ async function registerClient({
 // ==== SIMULASI PEMBELIAN MANUAL ====
 // Ganti data di bawah sesuai pembeli baru
 registerClient({
-  owner_id: 8,
-  business_name: 'kecil',
-  username: "vice",
-  email: 'vice@gmail.com',
+  owner_id: 1,
+  business_name: 'betarak',
+  username: "betarak",
+  email: 'betarak@gmail.com',
   phone: '081234567899',
-  password: 'password123', // plain password!
+  password: '123456', // plain password!
   plan: 'Pro',
   start_date: '2025-12-17',
   end_date: '2026-12-17'

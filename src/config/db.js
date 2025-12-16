@@ -11,7 +11,6 @@ const pool = mysql.createPool({
     connectionLimit: 10,
 });
 
-// Test connection dengan auto-retry
 async function testConnection(retries = 3, delay = 5000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -21,28 +20,17 @@ async function testConnection(retries = 3, delay = 5000) {
             return true;
         } catch (error) {
             console.error(`❌ MySQL connection attempt ${i + 1}/${retries} failed:`, error.message);
-            
-            if (i < retries - 1) {
-                console.log(`⏳ Retrying in ${delay/1000} seconds...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-                console.error('🚨 All connection attempts failed');
-                // Jangan exit di production, biar restart
-                return false;
-            }
+            if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
         }
     }
+    console.error('🚨 All connection attempts failed');
+    return false;
 }
 
-// Jalankan test koneksi
-if (process.env.NODE_ENV !== 'test') {
-    testConnection();
-}
+if (process.env.NODE_ENV !== 'test') testConnection();
 
 const getTenantConnection = async (dbName) => {
-    if (!dbName) {
-        throw new Error('Tenant database name (dbName) is required');
-    }
+    if (!dbName) throw new Error('Tenant database name (dbName) is required');
 
     const conn = await mysql.createConnection({
         host: process.env.DB_HOST,
@@ -51,7 +39,6 @@ const getTenantConnection = async (dbName) => {
         database: dbName,
     });
 
-    // verify database selected / exists
     const [rows] = await conn.query('SELECT DATABASE() AS db');
     if (!rows[0] || !rows[0].db) {
         await conn.end();
