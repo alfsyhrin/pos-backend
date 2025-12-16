@@ -40,6 +40,16 @@ const UserController = {
             console.log('Creating user in tenant:', dbName, 'owner_id:', owner_id);
             conn = await getTenantConnection(dbName);
 
+            // --- cek owner di tenant (hindari FK constraint failure) ---
+            const [ownerRows] = await conn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
+            if (ownerRows.length === 0) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Owner tidak ditemukan di database tenant. Jalankan register client atau sinkronisasi owner terlebih dahulu.'
+                });
+            }
+            // --- end cek owner ---
+            
             const pool = require('../config/db');
             const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
             const plan = subs[0]?.plan || 'Standard';

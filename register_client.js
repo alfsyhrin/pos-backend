@@ -36,17 +36,27 @@ async function registerClient({
   });
 
   // 2. Tambahkan owner ke tabel owners (jika belum ada)
-  await conn.execute(
-    `INSERT INTO owners (id, business_name, email, phone, password) VALUES (?, ?, ?, ?, ?)`,
-    [owner_id, business_name, email, phone, hashedPassword]
-  );
+  const [existingOwner] = await conn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
+  if (existingOwner.length === 0) {
+    await conn.execute(
+      `INSERT INTO owners (id, business_name, email, phone, password) VALUES (?, ?, ?, ?, ?)`,
+      [owner_id, business_name, email, phone, hashedPassword]
+    );
+  } else {
+    console.log('Owner already exists in main owners table:', owner_id);
+  }
 
-  // 2a. Tambahkan owner ke tabel users (agar bisa login via API user)
-  await conn.execute(
-    `INSERT INTO users (owner_id, store_id, name, username, email, password, role, is_active) VALUES (?, NULL, ?, ?, ?, ?, 'owner', 1)`,
-    [owner_id, business_name, username, email, hashedPassword]
-  );
-
+  // 2a. Tambahkan owner ke tabel users (agar bisa login via API user) jika belum ada
+  const [existingUser] = await conn.query('SELECT id FROM users WHERE email = ?', [email]);
+  if (existingUser.length === 0) {
+    await conn.execute(
+      `INSERT INTO users (owner_id, store_id, name, username, email, password, role, is_active) VALUES (?, NULL, ?, ?, ?, ?, 'owner', 1)`,
+      [owner_id, business_name, username || email, email, hashedPassword]
+    );
+  } else {
+    console.log('Owner user already exists in main users table:', email);
+  }
+  
   // 3. Buat database tenant baru
   await conn.execute(`CREATE DATABASE ${db_name}`);
 
@@ -62,6 +72,45 @@ async function registerClient({
     );
   });
 
+  // --- baru: sinkronisasi owner ke tenant owners table ---
+  // hubungkan ke tenant dan pastikan ada row owner dengan id yang sama
+  const tenantConn = await mysql.createConnection({
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: db_name
+  });
+
+  try {
+    const [ownerRows] = await tenantConn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
+    if (ownerRows.length === 0) {
+      // coba insert dengan kolom umum; jika gagal, coba alternatif
+      try {
+        await tenantConn.execute(
+          'INSERT INTO owners (id, name, email, created_at) VALUES (?, ?, ?, NOW())',
+          [owner_id, business_name, email]
+        );
+        console.log('Owner row inserted into tenant owners table:', db_name);
+      } catch (err) {
+        console.warn('Insert into tenant owners (id,name,email) failed, trying alternative columns:', err.message);
+        try {
+          await tenantConn.execute(
+            'INSERT INTO owners (id, business_name, email, phone, password, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [owner_id, business_name, email, phone, hashedPassword]
+          );
+          console.log('Owner row inserted into tenant owners table (alternative columns):', db_name);
+        } catch (err2) {
+          console.error('Failed to insert owner into tenant owners table:', err2.message);
+        }
+      }
+    } else {
+      console.log('Owner already exists in tenant owners table:', db_name);
+    }
+  } finally {
+    await tenantConn.end();
+  }
+  // --- end sinkronisasi owner ---
+  
   // 5. (Opsional) Buat user MySQL khusus tenant
   await conn.execute(`CREATE USER IF NOT EXISTS '${db_user}'@'%' IDENTIFIED BY '${db_password}'`);
   await conn.execute(`GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_user}'@'%'`);
