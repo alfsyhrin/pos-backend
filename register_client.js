@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs'); // Tambahkan ini
 // Ganti sesuai konfigurasi servermu
 const DB_HOST = 'localhost';
 const DB_USER = 'root';
-const DB_PASSWORD = '';
+const DB_PASSWORD = 'pipos123';
 const DB_NAME = 'kasir_multi_tenant';
 
 async function registerClient({
