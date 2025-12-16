@@ -1,11 +1,12 @@
 const mysql = require('mysql2/promise');
 const { exec } = require('child_process');
 const path = require('path');
+const bcrypt = require('bcryptjs'); // Tambahkan ini
 
 // Ganti sesuai konfigurasi servermu
 const DB_HOST = 'localhost';
 const DB_USER = 'root';
-const DB_PASSWORD = 'pipos123';
+const DB_PASSWORD = '';
 const DB_NAME = 'kasir_multi_tenant';
 
 async function registerClient({
@@ -13,7 +14,7 @@ async function registerClient({
   business_name,
   email,
   phone,
-  password, // Sudah di-hash!
+  password, // Plain password!
   plan,
   start_date,
   end_date
@@ -21,6 +22,9 @@ async function registerClient({
   const db_name = `kasir_tenant_${owner_id}`;
   const db_user = `user_${owner_id}`;
   const db_password = `pass${Math.floor(Math.random() * 100000)}`;
+
+  // Hash password sebelum simpan ke database
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   // 1. Koneksi ke database utama
   const conn = await mysql.createConnection({
@@ -33,13 +37,13 @@ async function registerClient({
   // 2. Tambahkan owner ke tabel owners (jika belum ada)
   await conn.execute(
     `INSERT INTO owners (id, business_name, email, phone, password) VALUES (?, ?, ?, ?, ?)`,
-    [owner_id, business_name, email, phone, password]
+    [owner_id, business_name, email, phone, hashedPassword]
   );
 
   // 2a. Tambahkan owner ke tabel users (agar bisa login via API user)
   await conn.execute(
     `INSERT INTO users (owner_id, store_id, name, username, password, role, is_active) VALUES (?, NULL, ?, ?, ?, 'owner', 1)`,
-    [owner_id, business_name, email, password]
+    [owner_id, business_name, email, hashedPassword]
   );
 
   // 3. Buat database tenant baru
@@ -86,7 +90,7 @@ registerClient({
   business_name: 'Betarak',
   email: 'betarak@gmail.com',
   phone: '081234567899',
-  password: 'password123', // hash bcrypt!
+  password: 'password123', // plain password!
   plan: 'Pro',
   start_date: '2025-12-17',
   end_date: '2026-12-17'
