@@ -33,7 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/stores', transactionRoutes); // Tambahkan ini
 app.use('/api/stores', reportRoutes);
-app.use('/api/products', productRoutes);
+app.use('/api/stores', productRoutes);
 app.use('/api', userRoutes);
 
 // Default route
