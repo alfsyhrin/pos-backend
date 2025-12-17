@@ -1,148 +1,126 @@
 const pool = require('../config/db');
 
+function isConn(obj) {
+  return obj && typeof obj.execute === 'function';
+}
+
 const StoreModel = {
-    // Create new store
-    async create(storeData) {
-        try {
-            const { owner_id, name, address, phone, receipt_template } = storeData;
-            
-            const [result] = await pool.execute(
-                `INSERT INTO stores (owner_id, name, address, phone, receipt_template) 
-                 VALUES (?, ?, ?, ?, ?)`,
-                [owner_id, name, address || null, phone || null, receipt_template || null]
-            );
-            
-            return result.insertId;
-        } catch (error) {
-            throw error;
-        }
-    },
+  // create(conn, data) or create(data)
+  async create(connOrData, maybeData) {
+    const db = isConn(connOrData) ? connOrData : pool;
+    const data = isConn(connOrData) ? maybeData : connOrData;
+    const { owner_id, name, address, phone, receipt_template } = data;
+    const [result] = await db.execute(
+      `INSERT INTO stores (owner_id, name, address, phone, receipt_template, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [owner_id, name, address || null, phone || null, receipt_template || null]
+    );
+    return result.insertId;
+  },
 
-    // Get all stores for an owner
-    async findAllByOwner(ownerId) {
-        try {
-            const [rows] = await pool.execute(
-                `SELECT * FROM stores 
-                 WHERE owner_id = ? 
-                 ORDER BY created_at DESC`,
-                [ownerId]
-            );
-            return rows;
-        } catch (error) {
-            throw error;
-        }
-    },
+  // findAllByOwner(conn, ownerId) or findAllByOwner(ownerId)
+  async findAllByOwner(connOrOwnerId, maybeOwnerId) {
+    const db = isConn(connOrOwnerId) ? connOrOwnerId : pool;
+    const ownerId = isConn(connOrOwnerId) ? maybeOwnerId : connOrOwnerId;
+    const [rows] = await db.execute(
+      `SELECT * FROM stores WHERE owner_id = ? ORDER BY created_at DESC`,
+      [ownerId]
+    );
+    return rows;
+  },
 
-    // Get single store by ID (with owner validation)
-    async findById(storeId, ownerId = null) {
-        try {
-            let query = `SELECT * FROM stores WHERE id = ?`;
-            const params = [storeId];
-            
-            if (ownerId) {
-                query += ` AND owner_id = ?`;
-                params.push(ownerId);
-            }
-            
-            const [rows] = await pool.execute(query, params);
-            return rows[0] || null;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    
-    // Add new receipt template
-    async createReceiptTemplate(storeId, templateName, templateData) {
-        try {
-            const [result] = await pool.execute(
-                `INSERT INTO struck_receipt (store_id, template_name, template_data) 
-                 VALUES (?, ?, ?)`,
-                [storeId, templateName, templateData]
-            );
-            return result.insertId;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Get receipt template for a store
-    async getReceiptTemplate(storeId) {
-        try {
-            const [rows] = await pool.execute(
-                `SELECT * FROM struck_receipt WHERE store_id = ?`,
-                [storeId]
-            );
-            return rows[0] || null;  // Assume one template per store
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Update store
-    async update(storeId, ownerId, updateData) {
-        try {
-            const { name, address, phone, receipt_template } = updateData;
-            
-            const [result] = await pool.execute(
-                `UPDATE stores 
-                 SET name = ?, address = ?, phone = ?, receipt_template = ?, 
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = ? AND owner_id = ?`,
-                [name, address || null, phone || null, receipt_template || null, 
-                 storeId, ownerId]
-            );
-            
-            return result.affectedRows > 0;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Delete store (soft delete or hard delete)
-    async delete(storeId, ownerId) {
-        try {
-            // Hard delete (permanent)
-            const [result] = await pool.execute(
-                `DELETE FROM stores WHERE id = ? AND owner_id = ?`,
-                [storeId, ownerId]
-            );
-            
-            return result.affectedRows > 0;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Get store count for an owner (for subscription limit)
-    async countByOwner(ownerId) {
-        try {
-            const [rows] = await pool.execute(
-                `SELECT COUNT(*) as count FROM stores WHERE owner_id = ?`,
-                [ownerId]
-            );
-            return rows[0].count;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Search stores by name
-    async search(ownerId, searchTerm) {
-        try {
-            const [rows] = await pool.execute(
-                `SELECT * FROM stores 
-                 WHERE owner_id = ? 
-                 AND (name LIKE ? OR address LIKE ? OR phone LIKE ?)
-                 ORDER BY name`,
-                [ownerId, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
-            );
-            return rows;
-        } catch (error) {
-            throw error;
-        }
+  // findById(conn, storeId, ownerId?) or findById(storeId, ownerId?)
+  async findById(connOrStoreId, maybeStoreId, maybeOwnerId) {
+    const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+    const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+    const ownerId = isConn(connOrStoreId) ? maybeOwnerId : maybeStoreId;
+    let query = `SELECT * FROM stores WHERE id = ?`;
+    const params = [storeId];
+    if (ownerId) {
+      query += ` AND owner_id = ?`;
+      params.push(ownerId);
     }
+    const [rows] = await db.execute(query, params);
+    return rows[0] || null;
+  },
 
+  // createReceiptTemplate(conn, storeId, templateName, templateData) or createReceiptTemplate(storeId, templateName, templateData)
+  async createReceiptTemplate(connOrStoreId, maybeStoreId, templateName, templateData) {
+    let db, storeId;
+    if (isConn(connOrStoreId)) {
+      db = connOrStoreId; storeId = maybeStoreId;
+    } else {
+      db = pool; storeId = connOrStoreId;
+      templateName = maybeStoreId; templateData = templateName;
+    }
+    const [result] = await db.execute(
+      `INSERT INTO struck_receipt (store_id, template_name, template_data, created_at) VALUES (?, ?, ?, NOW())`,
+      [storeId, templateName, templateData]
+    );
+    return result.insertId;
+  },
+
+  // getReceiptTemplate(conn, storeId) or getReceiptTemplate(storeId)
+  async getReceiptTemplate(connOrStoreId, maybeStoreId) {
+    const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+    const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+    const [rows] = await db.execute(`SELECT * FROM struck_receipt WHERE store_id = ?`, [storeId]);
+    return rows[0] || null;
+  },
+
+  // update(conn, storeId, ownerId, updateData) or update(storeId, ownerId, updateData)
+  async update(connOrStoreId, maybeStoreId, maybeOwnerId, maybeData) {
+    let db, storeId, ownerId, updateData;
+    if (isConn(connOrStoreId)) {
+      db = connOrStoreId; storeId = maybeStoreId; ownerId = maybeOwnerId; updateData = maybeData;
+    } else {
+      db = pool; storeId = connOrStoreId; ownerId = maybeStoreId; updateData = maybeOwnerId;
+    }
+    const fields = [];
+    const params = [];
+    ['name','address','phone','receipt_template'].forEach(k => {
+      if (updateData[k] !== undefined) {
+        fields.push(`${k} = ?`);
+        params.push(updateData[k] || null);
+      }
+    });
+    if (fields.length === 0) return false;
+    params.push(storeId, ownerId);
+    const [result] = await db.execute(
+      `UPDATE stores SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_id = ?`,
+      params
+    );
+    return result.affectedRows > 0;
+  },
+
+  // delete(conn, storeId, ownerId) or delete(storeId, ownerId)
+  async delete(connOrStoreId, maybeStoreId, maybeOwnerId) {
+    const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+    const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+    const ownerId = isConn(connOrStoreId) ? maybeOwnerId : maybeStoreId;
+    const [result] = await db.execute(`DELETE FROM stores WHERE id = ? AND owner_id = ?`, [storeId, ownerId]);
+    return result.affectedRows > 0;
+  },
+
+  // countByOwner(conn, ownerId) or countByOwner(ownerId)
+  async countByOwner(connOrOwnerId, maybeOwnerId) {
+    const db = isConn(connOrOwnerId) ? connOrOwnerId : pool;
+    const ownerId = isConn(connOrOwnerId) ? maybeOwnerId : connOrOwnerId;
+    const [rows] = await db.execute(`SELECT COUNT(*) as count FROM stores WHERE owner_id = ?`, [ownerId]);
+    return rows[0].count;
+  },
+
+  // search(conn, ownerId, term) or search(ownerId, term)
+  async search(connOrOwnerId, maybeOwnerId, maybeTerm) {
+    const db = isConn(connOrOwnerId) ? connOrOwnerId : pool;
+    const ownerId = isConn(connOrOwnerId) ? maybeOwnerId : connOrOwnerId;
+    const term = isConn(connOrOwnerId) ? maybeTerm : maybeOwnerId;
+    const [rows] = await db.execute(
+      `SELECT * FROM stores WHERE owner_id = ? AND (name LIKE ? OR address LIKE ? OR phone LIKE ?) ORDER BY name`,
+      [ownerId, `%${term}%`, `%${term}%`, `%${term}%`]
+    );
+    return rows;
+  }
 };
 
 module.exports = StoreModel;

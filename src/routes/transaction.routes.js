@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const TransactionController = require('../controllers/transaction.controllers');
 const authMiddleware = require('../middleware/auth');
+const checkTenant = require('../middleware/checkTenant');
 const { createTransactionSchema, updateTransactionSchema } = require('../validations/transaction.validation');
 
 // Create Transaction (protected route)
 router.post(
   '/:store_id/transactions',
   authMiddleware(['owner', 'admin', 'cashier']),
+  checkTenant,
   (req, res, next) => {
     const { error } = createTransactionSchema.validate(req.body);
     if (error) {
@@ -22,6 +24,7 @@ router.post(
 router.post(
   '/:store_id/transactions/complete',
   authMiddleware(['owner', 'admin', 'cashier']),
+  checkTenant,
   TransactionController.completeTransaction
 );
 
@@ -29,6 +32,7 @@ router.post(
 router.post(
   '/:store_id/cart/add',
   authMiddleware(['owner', 'admin', 'cashier']),
+  checkTenant,
   TransactionController.addItemToCart
 );
 
@@ -36,6 +40,7 @@ router.post(
 router.get(
   '/:store_id/transactions',
   authMiddleware(['owner', 'admin', 'cashier']),
+  checkTenant,
   TransactionController.getAll
 );
 
@@ -43,6 +48,7 @@ router.get(
 router.get(
   '/:store_id/transactions/:id',
   authMiddleware(['owner', 'admin', 'cashier']),
+  checkTenant,
   TransactionController.getById
 );
 
@@ -50,6 +56,7 @@ router.get(
 router.put(
   '/:store_id/transactions/:id',
   authMiddleware(['owner', 'admin']),
+  checkTenant,
   (req, res, next) => {
     const { error } = updateTransactionSchema.validate(req.body);
     if (error) {
@@ -64,6 +71,7 @@ router.put(
 router.delete(
   '/:store_id/transactions/:id',
   authMiddleware(['owner', 'admin']),
+  checkTenant,
   TransactionController.delete
 );
 

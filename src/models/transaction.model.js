@@ -1,117 +1,123 @@
 const pool = require('../config/db');
 
+function isConn(obj) {
+  return obj && typeof obj.execute === 'function';
+}
+
 const TransactionModel = {
-    // Membuat transaksi baru
-    async create(transactionData) {
-        try {
-            const { store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = transactionData;
+    // Membuat transaksi baru (conn, data) atau (data)
+    async create(connOrData, maybeData) {
+        const db = isConn(connOrData) ? connOrData : pool;
+        const data = isConn(connOrData) ? maybeData : connOrData;
+        const { store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = data;
 
-            const [result] = await pool.query(
-                `INSERT INTO transactions (store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status]
-            );
-
-            return result.insertId;  // Mengembalikan ID transaksi yang baru dibuat
-        } catch (error) {
-            throw error;
-        }
+        const [result] = await db.execute(
+            `INSERT INTO transactions (store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status]
+        );
+        return result.insertId;
     },
 
-    // Menambahkan item ke transaksi
-    async addItems(transactionId, items) {
-        try {
-            const values = items.map(item => [
-                transactionId,
-                item.product_id,
-                item.quantity, // Ganti qty jadi quantity
-                Number(item.price), // Pastikan number
-                Number(item.quantity) * Number(item.price) // Hitung subtotal dengan benar
-            ]);
+    // Menambahkan item ke transaksi (conn, transactionId, items) atau (transactionId, items)
+    async addItems(connOrId, maybeIdOrItems, maybeItems) {
+        const db = isConn(connOrId) ? connOrId : pool;
+        const transactionId = isConn(connOrId) ? maybeIdOrItems : connOrId;
+        const items = isConn(connOrId) ? maybeItems : maybeIdOrItems;
 
-            await pool.query(
-                `INSERT INTO transaction_items (transaction_id, product_id, qty, price, subtotal) 
-                 VALUES ?`, [values]
-            );
-        } catch (error) {
-            throw error;
-        }
+        const values = items.map(item => [
+            transactionId,
+            item.product_id,
+            item.quantity,
+            Number(item.price),
+            Number(item.quantity) * Number(item.price)
+        ]);
+
+        // Bulk insert
+        await db.query(
+            `INSERT INTO transaction_items (transaction_id, product_id, qty, price, subtotal) 
+             VALUES ?`, [values]
+        );
     },
 
-    // Mendapatkan transaksi berdasarkan ID
-    async findById(transactionId, storeId) {
-        try {
-            const query = `SELECT * FROM transactions WHERE id = ? AND store_id = ?`;
-            const params = [transactionId, storeId];
-            const [rows] = await pool.execute(query, params);
-            return rows[0] || null;
-        } catch (error) {
-            throw error;
-        }
+    // Mendapatkan transaksi berdasarkan ID (conn, transactionId, storeId) atau (transactionId, storeId)
+    async findById(connOrId, maybeIdOrStore, maybeStore) {
+        const db = isConn(connOrId) ? connOrId : pool;
+        const transactionId = isConn(connOrId) ? maybeIdOrStore : connOrId;
+        const storeId = isConn(connOrId) ? maybeStore : maybeIdOrStore;
+        const query = `SELECT * FROM transactions WHERE id = ? AND store_id = ?`;
+        const params = [transactionId, storeId];
+        const [rows] = await db.execute(query, params);
+        return rows[0] || null;
     },
 
-    // Mendapatkan semua transaksi untuk sebuah toko
-    async findAllByStore(storeId, filters = {}) {
-        try {
-            let query = `SELECT * FROM transactions WHERE store_id = ?`;
-            const params = [storeId];
+    // Mendapatkan semua transaksi untuk sebuah toko (conn, storeId, filters) atau (storeId, filters)
+    async findAllByStore(connOrStoreId, maybeStoreId, maybeFilters) {
+        const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+        const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+        const filters = isConn(connOrStoreId) ? maybeFilters || {} : maybeStoreId || {};
+        let query = `SELECT * FROM transactions WHERE store_id = ?`;
+        const params = [storeId];
 
-            if (filters.status) {
-                query += ` AND payment_status = ?`;
-                params.push(filters.status);
-            }
-
-            const [rows] = await pool.execute(query, params);
-            return rows;
-        } catch (error) {
-            throw error;
+        if (filters.status) {
+            query += ` AND payment_status = ?`;
+            params.push(filters.status);
         }
+
+        const [rows] = await db.execute(query, params);
+        return rows;
     },
 
-    // Update transaksi
-    async update(transactionId, storeId, updateData) {
-        try {
-            const { total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = updateData;
-            const query = `UPDATE transactions 
-                           SET total_cost = ?, payment_type = ?, payment_method = ?, received_amount = ?, change_amount = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP
-                           WHERE id = ? AND store_id = ?`;
-            const params = [total_cost, payment_type, payment_method, received_amount, change_amount, payment_status, transactionId, storeId];
-            const [result] = await pool.execute(query, params);
-            return result.affectedRows > 0;
-        } catch (error) {
-            throw error;
+    // Update transaksi (conn, transactionId, storeId, updateData) atau (transactionId, storeId, updateData)
+    async update(connOrId, maybeIdOrStore, maybeStoreOrData, maybeData) {
+        let db, transactionId, storeId, updateData;
+        if (isConn(connOrId)) {
+            db = connOrId;
+            transactionId = maybeIdOrStore;
+            storeId = maybeStoreOrData;
+            updateData = maybeData;
+        } else {
+            db = pool;
+            transactionId = connOrId;
+            storeId = maybeIdOrStore;
+            updateData = maybeStoreOrData;
         }
+        const { total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = updateData;
+        const query = `UPDATE transactions 
+                       SET total_cost = ?, payment_type = ?, payment_method = ?, received_amount = ?, change_amount = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP
+                       WHERE id = ? AND store_id = ?`;
+        const params = [total_cost, payment_type, payment_method, received_amount, change_amount, payment_status, transactionId, storeId];
+        const [result] = await db.execute(query, params);
+        return result.affectedRows > 0;
     },
 
-    // Menghapus transaksi
-    async delete(transactionId, storeId) {
-        try {
-            const query = `DELETE FROM transactions WHERE id = ? AND store_id = ?`;
-            const params = [transactionId, storeId];
-            const [result] = await pool.execute(query, params);
-            return result.affectedRows > 0;
-        } catch (error) {
-            throw error;
-        }
+    // Menghapus transaksi (conn, transactionId, storeId) atau (transactionId, storeId)
+    async delete(connOrId, maybeIdOrStore, maybeStore) {
+        const db = isConn(connOrId) ? connOrId : pool;
+        const transactionId = isConn(connOrId) ? maybeIdOrStore : connOrId;
+        const storeId = isConn(connOrId) ? maybeStore : maybeIdOrStore;
+        const query = `DELETE FROM transactions WHERE id = ? AND store_id = ?`;
+        const params = [transactionId, storeId];
+        const [result] = await db.execute(query, params);
+        return result.affectedRows > 0;
     },
-    // Menambahkan fungsi countByStore di TransactionModel
-    async countByStore(storeId, filters) {
-        try {
-            let query = `SELECT COUNT(*) AS total FROM transactions WHERE store_id = ?`;
-            const params = [storeId];
 
-            if (filters.status) {
-                query += ` AND payment_status = ?`; // Ganti status jadi payment_status
-                params.push(filters.status);
-            }
+    // Menghitung jumlah transaksi untuk sebuah toko (conn, storeId, filters) atau (storeId, filters)
+    async countByStore(connOrStoreId, maybeStoreId, maybeFilters) {
+        const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+        const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+        const filters = isConn(connOrStoreId) ? maybeFilters || {} : maybeStoreId || {};
+        let query = `SELECT COUNT(*) AS total FROM transactions WHERE store_id = ?`;
+        const params = [storeId];
 
-            const [rows] = await pool.execute(query, params);
-            return rows[0].total;
-        } catch (error) {
-            throw error;
+        if (filters.status) {
+            query += ` AND payment_status = ?`;
+            params.push(filters.status);
         }
+
+        const [rows] = await db.execute(query, params);
+        return rows[0].total;
     }
-
 };
 
 module.exports = TransactionModel;

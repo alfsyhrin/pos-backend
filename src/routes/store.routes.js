@@ -2,113 +2,35 @@ const express = require('express');
 const router = express.Router();
 const StoreController = require('../controllers/store.controllers');
 const authMiddleware = require('../middleware/auth');
+const checkTenant = require('../middleware/checkTenant');
 
-// ===== BASIC STORE ROUTES (WITH AUTH) =====
-
-// Apply auth to all routes
-router.use(authMiddleware());
+// Semua route di bawah ini sudah dynamic DB (controller sudah pakai getTenantConnection)
 
 // GET /api/stores - Get all stores for current owner
-router.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Get all stores endpoint',
-        user: req.user
-    });
-});
+router.get('/', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getAll);
 
 // GET /api/stores/search - Search stores
-router.get('/search', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Search stores endpoint',
-        query: req.query.q
-    });
-});
+router.get('/search', authMiddleware(['owner', 'admin']), checkTenant, StoreController.search);
 
 // GET /api/stores/:id - Get single store
-router.get('/:id', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Get store by ID',
-        store_id: req.params.id,
-        user: req.user
-    });
-});
-
-// ===== PROTECTED STORE ROUTES =====
+router.get('/:id', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getById);
 
 // POST /api/stores - Create new store (owner only)
-router.post('/', authMiddleware(['owner']), (req, res) => {
-    res.json({
-        success: true,
-        message: 'Create store endpoint (owner only)',
-        user: req.user,
-        data: req.body
-    });
-});
+router.post('/', authMiddleware(['owner']), checkTenant, StoreController.create);
 
 // PUT /api/stores/:id - Update store (owner only)
-router.put('/:id', authMiddleware(['owner']), (req, res) => {
-    res.json({
-        success: true,
-        message: 'Update store endpoint (owner only)',
-        store_id: req.params.id,
-        user: req.user,
-        data: req.body
-    });
-});
+router.put('/:id', authMiddleware(['owner']), checkTenant, StoreController.update);
 
 // DELETE /api/stores/:id - Delete store (owner only)
-router.delete('/:id', authMiddleware(['owner']), (req, res) => {
-    res.json({
-        success: true,
-        message: 'Delete store endpoint (owner only)',
-        store_id: req.params.id,
-        user: req.user
-    });
-});
-
-// ===== STORE-SPECIFIC FEATURES =====
+router.delete('/:id', authMiddleware(['owner']), checkTenant, StoreController.delete);
 
 // Get store statistics
-router.get('/:store_id/stats', 
-    authMiddleware(['owner', 'admin']),
-    (req, res) => {
-        res.json({
-            success: true,
-            message: 'Store stats endpoint',
-            store_id: req.params.store_id,
-            user: req.user
-        });
-    }
-);
+router.get('/:store_id/stats', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getStats);
 
 // Create Receipt Template
-router.post('/:store_id/receipt-template', 
-    authMiddleware(['owner']), 
-    (req, res) => {
-        res.json({
-            success: true,
-            message: 'Receipt template created',
-            store_id: req.params.store_id,
-            user: req.user,
-            data: req.body
-        });
-    }
-);
+router.post('/:store_id/receipt-template', authMiddleware(['owner']), checkTenant, StoreController.createReceiptTemplate);
 
 // Get Receipt Template
-router.get('/:store_id/receipt-template', 
-    authMiddleware(['owner', 'admin']), 
-    (req, res) => {
-        res.json({
-            success: true,
-            message: 'Get receipt template',
-            store_id: req.params.store_id,
-            user: req.user
-        });
-    }
-);
+router.get('/:store_id/receipt-template', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getReceiptTemplate);
 
 module.exports = router;
