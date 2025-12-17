@@ -36,14 +36,28 @@ function getPackageLimit(plan, key) {
   if (customLimits[plan] && customLimits[plan][key] !== undefined) {
     return customLimits[plan][key];
   }
-  return DEFAULT_LIMITS[plan][key];
+  if (DEFAULT_LIMITS[plan] && DEFAULT_LIMITS[plan][key] !== undefined) {
+    return DEFAULT_LIMITS[plan][key];
+  }
+  // Fallback: jika plan tidak ditemukan, pakai Standard
+  if (DEFAULT_LIMITS['Standard'][key] !== undefined) {
+    return DEFAULT_LIMITS['Standard'][key];
+  }
+  throw new Error(`Limit untuk plan "${plan}" dan key "${key}" tidak ditemukan`);
 }
 
 function getRoleLimit(plan, role) {
   if (customLimits[plan] && customLimits[plan].role_limits && customLimits[plan].role_limits[role] !== undefined) {
     return customLimits[plan].role_limits[role];
   }
-  return DEFAULT_LIMITS[plan].role_limits[role];
+  if (DEFAULT_LIMITS[plan] && DEFAULT_LIMITS[plan].role_limits && DEFAULT_LIMITS[plan].role_limits[role] !== undefined) {
+    return DEFAULT_LIMITS[plan].role_limits[role];
+  }
+  // Fallback: jika plan tidak ditemukan, pakai Standard
+  if (DEFAULT_LIMITS['Standard'].role_limits[role] !== undefined) {
+    return DEFAULT_LIMITS['Standard'].role_limits[role];
+  }
+  throw new Error(`Role limit untuk plan "${plan}" dan role "${role}" tidak ditemukan`);
 }
 
 module.exports = { getPackageLimit, getRoleLimit };
