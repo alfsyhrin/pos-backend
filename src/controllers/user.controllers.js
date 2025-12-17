@@ -1,21 +1,22 @@
 const UserModel = require('../models/user.model');
 const bcrypt = require('bcryptjs');
 const { getTenantConnection } = require('../config/db');
+const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
-const USER_LIMITS = {
-  'Standard': 1,
-  'Pro': 6,
-  'Eksklusif': 11
-};
+// const USER_LIMITS = {
+//   'Standard': 1,
+//   'Pro': 6,
+//   'Eksklusif': 11
+// };
 
 // policy default = 'per_role'
-const USER_LIMIT_POLICY = process.env.USER_LIMIT_POLICY || 'per_role';
+// const USER_LIMIT_POLICY = process.env.USER_LIMIT_POLICY || 'per_role';
 // role limits per paket (owner, admin, cashier)
-const PLAN_ROLE_LIMITS = {
-  'Standard':  { owner: 1, admin: 0, cashier: 0, user: 0 },
-  'Pro':       { owner: 1, admin: 1, cashier: 4, user: 6 },
-  'Eksklusif': { owner: 1, admin: 2, cashier: 8, user: 11 }
-};
+// const PLAN_ROLE_LIMITS = {
+//   'Standard':  { owner: 1, admin: 0, cashier: 0, user: 0 },
+//   'Pro':       { owner: 1, admin: 1, cashier: 4, user: 6 },
+//   'Eksklusif': { owner: 1, admin: 2, cashier: 8, user: 11 }
+// };
 
 const UserController = {
     // List user by store
@@ -25,9 +26,20 @@ const UserController = {
             const { store_id } = req.params;
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
-            console.log('Listing users in tenant:', dbName);
             conn = await getTenantConnection(dbName);
-            const users = await UserModel.findByStore(conn, store_id);
+
+            let users = [];
+            if (req.user.role === 'owner') {
+                // Owner: lihat semua user di semua toko miliknya
+                users = await UserModel.findAllByOwner(conn, req.user.owner_id);
+            } else if (req.user.role === 'admin') {
+                // Admin: hanya lihat user di tokonya sendiri
+                users = await UserModel.findByStore(conn, req.user.store_id);
+            } else {
+                // Kasir tidak boleh akses
+                return res.status(403).json({ success: false, message: 'Akses ditolak' });
+            }
+
             res.json({ success: true, data: users });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal mengambil data user', error: error.message });
@@ -77,6 +89,16 @@ const UserController = {
             const pool = require('../config/db');
             const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
             const plan = subs[0]?.plan || 'Standard';
+
+            // Untuk cek limit produk
+            const productLimit = getPackageLimit(plan, 'product_limit');
+
+            // Untuk cek limit user per role
+            const roleLimit = getRoleLimit(plan, role);
+            const totalRole = await UserModel.countByRole(conn, store_id, role);
+            if (totalRole >= roleLimit) {
+              return response.badRequest(res, `Batas user role ${role} (${roleLimit}) untuk paket ${plan} telah tercapai`);
+            }
 
             // cek limit
             if (USER_LIMIT_POLICY === 'total') {

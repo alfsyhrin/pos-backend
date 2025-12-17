@@ -42,33 +42,7 @@ const StoreController = {
         }
     },
 
-    // Create receipt template
-    async createReceiptTemplate(req, res) {
-        let conn;
-        try {
-            const dbName = req.user.db_name;
-            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
-            conn = await getTenantConnection(dbName);
-
-            const { store_id } = req.params;
-            const { template_name, template_data } = req.body;
-            if (!template_name || !template_data) {
-                return response.badRequest(res, 'Template name and data are required');
-            }
-
-            const templateId = await StoreModel.createReceiptTemplate(conn, store_id, template_name, template_data);
-            const template = await StoreModel.getReceiptTemplate(conn, store_id);
-
-            return response.created(res, template, 'Receipt template created successfully');
-        } catch (error) {
-            console.error('Create Receipt Template Error:', error);
-            return response.error(res, 'An error occurred while creating receipt template', 500, error);
-        } finally {
-            if (conn) await conn.end();
-        }
-    },
-
-    // Get receipt template for a store
+    // GET /api/stores/:store_id/receipt-template
     async getReceiptTemplate(req, res) {
         let conn;
         try {
@@ -77,13 +51,38 @@ const StoreController = {
             conn = await getTenantConnection(dbName);
 
             const { store_id } = req.params;
-            const template = await StoreModel.getReceiptTemplate(conn, store_id);
-
-            if (!template) return response.notFound(res, 'Receipt template not found');
-            return response.success(res, template, 'Receipt template fetched successfully');
+            const [rows] = await conn.query(
+                `SELECT receipt_template FROM stores WHERE id = ? LIMIT 1`,
+                [store_id]
+            );
+            if (!rows.length) return response.notFound(res, 'Template struk tidak ditemukan');
+            return response.success(res, rows[0], 'Template struk berhasil diambil');
         } catch (error) {
-            console.error('Get Receipt Template Error:', error);
-            return response.error(res, 'An error occurred while fetching receipt template', 500, error);
+            return response.error(res, 'Gagal mengambil template struk', 500, error);
+        } finally {
+            if (conn) await conn.end();
+        }
+    },
+
+    // POST /api/stores/:store_id/receipt-template
+    async createReceiptTemplate(req, res) {
+        let conn;
+        try {
+            const dbName = req.user.db_name;
+            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            const { store_id } = req.params;
+            const { receipt_template } = req.body;
+            if (!receipt_template) return response.badRequest(res, 'receipt_template wajib diisi');
+
+            await conn.query(
+                `UPDATE stores SET receipt_template = ? WHERE id = ?`,
+                [receipt_template, store_id]
+            );
+            return response.success(res, { receipt_template }, 'Template struk berhasil disimpan');
+        } catch (error) {
+            return response.error(res, 'Gagal menyimpan template struk', 500, error);
         } finally {
             if (conn) await conn.end();
         }
@@ -312,7 +311,59 @@ const StoreController = {
             message: 'Bulk update feature coming soon',
             note: 'This feature is under development'
         });
-    }
+    },
+
+    // GET /api/business-profile (owner only)
+    async getBusinessProfile(req, res) {
+        let conn;
+        try {
+            const owner_id = req.user.owner_id;
+            const dbName = req.user.db_name;
+            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            const [rows] = await conn.query(
+                `SELECT id, owner_id, name, address, phone FROM stores WHERE owner_id = ? AND type = 'business_profile' LIMIT 1`,
+                [owner_id]
+            );
+            if (!rows.length) return response.notFound(res, 'Informasi bisnis tidak ditemukan');
+            return response.success(res, rows[0], 'Informasi bisnis berhasil diambil');
+        } catch (error) {
+            return response.error(res, 'Gagal mengambil informasi bisnis', 500, error);
+        } finally {
+            if (conn) await conn.end();
+        }
+    },
+
+    // PUT /api/business-profile (owner only)
+    async updateBusinessProfile(req, res) {
+        let conn;
+        try {
+            const owner_id = req.user.owner_id;
+            const dbName = req.user.db_name;
+            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            const { name, address, phone } = req.body;
+            if (!name || name.trim() === '') return response.badRequest(res, 'Nama bisnis harus diisi');
+
+            const [result] = await conn.query(
+                `UPDATE stores SET name = ?, address = ?, phone = ? WHERE owner_id = ? AND type = 'business_profile'`,
+                [name.trim(), address ? address.trim() : null, phone ? phone.trim() : null, owner_id]
+            );
+            if (result.affectedRows === 0) return response.error(res, 'Gagal mengupdate informasi bisnis', 400);
+
+            const [rows] = await conn.query(
+                `SELECT id, owner_id, name, address, phone FROM stores WHERE owner_id = ? AND type = 'business_profile' LIMIT 1`,
+                [owner_id]
+            );
+            return response.success(res, rows[0], 'Informasi bisnis berhasil diupdate');
+        } catch (error) {
+            return response.error(res, 'Gagal mengupdate informasi bisnis', 500, error);
+        } finally {
+            if (conn) await conn.end();
+        }
+    },
 };
 
 module.exports = StoreController;

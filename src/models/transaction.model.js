@@ -117,7 +117,18 @@ const TransactionModel = {
 
         const [rows] = await db.execute(query, params);
         return rows[0].total;
-    }
+    },
+
+    getItemsByTransactionId: async function(conn, transactionId) {
+        const [rows] = await conn.execute(
+          `SELECT ti.product_id, p.name as product_name, p.sku, ti.qty as quantity, ti.price, ti.subtotal
+           FROM transaction_items ti
+           LEFT JOIN products p ON ti.product_id = p.id
+           WHERE ti.transaction_id = ?`,
+          [transactionId]
+        );
+        return rows;
+      },
 };
 
 module.exports = TransactionModel;

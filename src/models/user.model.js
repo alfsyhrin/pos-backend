@@ -37,6 +37,15 @@ const UserModel = {
         return rows;
     },
 
+    // List semua user milik owner (semua toko)
+    async findAllByOwner(conn, owner_id) {
+        const [rows] = await conn.execute(
+            `SELECT * FROM users WHERE owner_id = ? AND is_active = 1 AND role IN ('admin','cashier')`,
+            [owner_id]
+        );
+        return rows;
+    },
+
     // Create user (tenant)
     async create(conn, data) {
         const [result] = await conn.execute(

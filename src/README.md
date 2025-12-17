@@ -160,6 +160,74 @@ BCRYPT_SALT_ROUNDS=10
   - **Headers:** Authorization: Bearer {token}
   - **Response:** Success message
 
+#### Get Store Info (Toko/Bisnis)
+- **GET** `/api/stores/:id`
+  - **Headers:** Authorization: Bearer {token}
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": 1,
+        "owner_id": 10,
+        "name": "Toko Sukses Jaya",
+        "address": "Jl. Contoh No. 123, Jakarta, Indonesia",
+        "phone": "+62 812-3456-7890",
+        "receipt_template": "DEFAULT_TEMPLATE_V1",
+        "created_at": "2025-12-01 10:22:11",
+        "updated_at": "2025-12-15 19:05:45"
+      }
+    }
+    ```
+
+#### Update Store Info (Toko/Bisnis)
+- **PUT** `/api/stores/:id`
+  - **Headers:** Authorization: Bearer {token}
+  - **Body:**
+    ```json
+    {
+      "name": "Nama Baru",
+      "address": "Alamat Baru",
+      "phone": "08123456789",
+      "receipt_template": "TEMPLATE_BARU"
+    }
+    ```
+  - **Response:** Updated store object
+
+#### Get Receipt Template
+- **GET** `/api/stores/:store_id/receipt-template`
+  - **Headers:** Authorization: Bearer {token}
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "receipt_template": "TEMPLATE_BARU"
+      },
+      "message": "Template struk berhasil diambil"
+    }
+    ```
+
+#### Set/Update Receipt Template
+- **POST** `/api/stores/:store_id/receipt-template`
+  - **Headers:** Authorization: Bearer {token}
+  - **Body:**
+    ```json
+    {
+      "receipt_template": "TEMPLATE_BARU"
+    }
+    ```
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "receipt_template": "TEMPLATE_BARU"
+      },
+      "message": "Template struk berhasil disimpan"
+    }
+    ```
+
 ---
 
 ### PRODUCTS
@@ -416,7 +484,28 @@ BCRYPT_SALT_ROUNDS=10
 #### Get Transaction by ID
 - **GET** `/api/stores/:store_id/transactions/:id`
   - **Headers:** Authorization: Bearer {token}
-  - **Response:** Transaction object
+  - **Response:**
+    ```json
+    {
+      "idShort": "000123",
+      "idFull": "TX000123",
+      "createdAt": "2025-12-17T10:22:11.000Z",
+      "method": "Tunai",
+      "total": 15000,
+      "received": 20000,
+      "change": 5000,
+      "items": [
+        {
+          "productId": 1,
+          "name": "Indomie Goreng",
+          "sku": "IND-001",
+          "price": 3500,
+          "qty": 2,
+          "lineTotal": 7000
+        }
+      ]
+    }
+    ```
 
 #### Update Transaction
 - **PUT** `/api/stores/:store_id/transactions/:id`
@@ -623,25 +712,168 @@ MIT
     }
     ```
 
-### Upload Gambar Produk
-POST /api/products/upload-image
-Headers: Authorization: Bearer {token}
-Body: form-data
-image: file gambar produk
-product_id: ID produk yang akan diupdate gambarnya
-Response:
+#### Get Business Profile (Owner Only)
+- **GET** `/api/business-profile`
+  - **Headers:** Authorization: Bearer {token}
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": 1,
+        "owner_id": 10,
+        "name": "PT Sukses Jaya",
+        "address": "Jl. Bisnis No. 1",
+        "phone": "08123456789"
+      }
+    }
+    ```
+
+#### Update Business Profile (Owner Only)
+- **PUT** `/api/business-profile`
+  - **Headers:** Authorization: Bearer {token}
+  - **Body:**
+    ```json
+    {
+      "name": "PT Sukses Jaya",
+      "address": "Jl. Bisnis No. 1",
+      "phone": "08123456789"
+    }
+    ```
+  - **Response:** Updated business profile object
+
+#### Get/Update Store (Admin)
+- **GET** `/api/stores/:id`
+- **PUT** `/api/stores/:id`
+  - (Hanya untuk admin/toko/cabang, tidak untuk owner)
+
+---
+
+## Custom Limit Paket & Cara Testing (Untuk Developer Backend)
+
+### 1. Membuat/Mengubah Limit Paket Custom
+
+- Jalankan script berikut di terminal:
+node create_custom_package.js
+- Masukkan nama paket (misal: Eksklusif, Platinum, dsb).
+- Masukkan batas produk, user, image, dan role sesuai permintaan klien.
+- File `src/config/custom_package_limits.json` akan otomatis terupdate.
+
+### 2. Membuat Akun Owner Baru
+
+- Register owner via API/script/manual.
+- Set plan owner ke nama paket yang di-custom (misal: Eksklusif).
+
+### 3. Upgrade Paket Owner
+
+- Ubah plan owner di database ke nama paket custom.
+- Pastikan file limit sudah sesuai.
+- (Opsional) Restart server jika backend cache file limit.
+
+### 4. Validasi Limit di Controller
+
+- Semua pengecekan limit produk/user/image sudah otomatis pakai utility:
+```js
+const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
+const productLimit = getPackageLimit(plan, 'product_limit');
+const imageLimit = getPackageLimit(plan, 'image_limit');
+const roleLimit = getRoleLimit(plan, role);
+```
+
+Tidak perlu hardcode limit di controller.
+
+5. Testing Limit di Postman
+Login sebagai user dari paket custom.
+Tambah produk/user/gambar hingga limit, pastikan API menolak jika melebihi.
+Tambah di bawah limit, pastikan API menerima.
+6. Validasi Upload Gambar Produk
+Pada endpoint upload gambar produk (/api/products/upload-image), backend akan otomatis menolak upload jika jumlah gambar produk sudah mencapai limit paket.
+Contoh response jika limit tercapai:
+Catatan:
+
+File limit hanya bisa diubah oleh developer backend/server admin.
+Tidak bisa diubah lewat API oleh user biasa.
+
+
+# Manajemen Karyawan
+3. Rekomendasi Tambahan
+Pastikan semua response konsisten (gunakan camelCase di frontend).
+Pastikan endpoint hanya bisa diakses oleh owner/admin (kasir ditolak).
+Pastikan validasi role & store_id/owner_id selalu dicek.
+
+---
+
+## Testing Manajemen Karyawan (User)
+
+### 1. List User/Karyawan
+
+#### a. Sebagai Owner
+- **Request:**  
+  `GET /api/stores/{store_id}/users`  
+  (dengan token owner)
+- **Hasil:**  
+  Mendapatkan semua user/karyawan di seluruh toko milik owner.
+
+#### b. Sebagai Admin
+- **Request:**  
+  `GET /api/stores/{store_id}/users`  
+  (dengan token admin)
+- **Hasil:**  
+  Mendapatkan hanya user/karyawan di toko admin tersebut.
+
+#### c. Sebagai Kasir
+- **Request:**  
+  `GET /api/stores/{store_id}/users`  
+  (dengan token kasir)
+- **Hasil:**  
+  Response: 403 Forbidden, akses ditolak.
+
+---
+
+### 2. Tambah/Edit/Hapus User
+
+- **Owner:** Bisa tambah/edit/hapus user di semua toko miliknya.
+- **Admin:** Hanya bisa tambah/edit/hapus user di tokonya sendiri.
+- **Kasir:** Tidak bisa tambah/edit/hapus user.
+
+---
+
+### 3. Contoh Response List User
+```json
 {
   "success": true,
-  "image_url": "uploads/tenant_1/1702730000000-nama-gambar.jpg"
+  "data": [
+    {
+      "id": 2,
+      "owner_id": 1,
+      "store_id": 3,
+      "name": "Admin Toko A",
+      "username": "admina",
+      "role": "admin",
+      "is_active": 1
+    },
+    {
+      "id": 3,
+      "owner_id": 1,
+      "store_id": 3,
+      "name": "Kasir 1",
+      "username": "kasir1",
+      "role": "cashier",
+      "is_active": 1
+    }
+  ]
 }
+```
+
+4. Catatan
+Pastikan token JWT sesuai role saat testing.
+Gunakan Postman untuk mencoba semua endpoint di atas.
+Jika ada error "Akses ditolak", cek role dan store_id di token.
+
+
 ---
 
-> **Catatan:**  
-> - Semua endpoint di atas membutuhkan header Authorization: Bearer {token}.
-> - Response `success: true` dan data sesuai kebutuhan frontend.
-> - Untuk laporan, parameter tanggal (`start`, `end`) wajib diisi untuk filter periode.
-
----
-
-**Tambahkan bagian ini ke README.md di bawah bagian API Endpoints agar dokumentasi API kamu lengkap dan mudah dipahami!**
-
+**Kesimpulan:**  
+- Backend sudah sesuai kebutuhan manajemen karyawan.
+- Dokumentasi testing siap ditambahkan ke README.md.
+- Siap lanjut ke fitur/penyesuaian berikutnya!

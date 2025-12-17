@@ -41,47 +41,36 @@ const ProductModel = {
   },
 
   // Get all products for a store (supports (conn, storeId, filters) or (storeId, filters))
-  async findAllByStore(connOrStoreId, maybeStoreId, maybeFilters) {
-    const hasConn = connOrStoreId && typeof connOrStoreId.execute === 'function';
-    const db = hasConn ? connOrStoreId : pool;
-    const storeId = hasConn ? maybeStoreId : connOrStoreId;
-    const filters = hasConn ? maybeFilters || {} : maybeStoreId || {};
-    try {
-      let query = `SELECT * FROM products WHERE store_id = ?`;
-      const params = [storeId];
+  findAllByStore: async function (connOrStoreId, maybeStoreId, maybeFilters) {
+    const db = isConn(connOrStoreId) ? connOrStoreId : pool;
+    const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
+    const filters = isConn(connOrStoreId) ? maybeFilters || {} : maybeStoreId || {};
+    let query = `SELECT * FROM products WHERE store_id = ?`;
+    const params = [storeId];
 
-      if (filters.is_active !== undefined) {
-        query += ` AND is_active = ?`;
-        params.push(filters.is_active);
-      }
-      if (filters.search) {
-        query += ` AND (name LIKE ? OR sku LIKE ? OR barcode LIKE ?)`;
-        const term = `%${filters.search}%`;
-        params.push(term, term, term);
-      }
-      if (filters.category) {
-        query += ` AND category = ?`;
-        params.push(filters.category);
-      }
-
-      const sortField = filters.sort_by || 'name';
-      const sortOrder = filters.sort_order || 'ASC';
-      query += ` ORDER BY ${sortField} ${sortOrder}`;
-
-      if (filters.limit) {
-        query += ` LIMIT ?`;
-        params.push(parseInt(filters.limit, 10));
-        if (filters.offset) {
-          query += ` OFFSET ?`;
-          params.push(parseInt(filters.offset, 10));
-        }
-      }
-
-      const [rows] = await db.execute(query, params);
-      return rows;
-    } catch (error) {
-      throw error;
+    if (filters.search) {
+      query += ` AND (name LIKE ? OR sku LIKE ? OR barcode LIKE ?)`;
+      const term = `%${filters.search}%`;
+      params.push(term, term, term);
     }
+    if (filters.category) {
+      query += ` AND category = ?`;
+      params.push(filters.category);
+    }
+    if (filters.sku) {
+      query += ` AND sku = ?`;
+      params.push(filters.sku);
+    }
+    if (filters.limit) {
+      query += ` LIMIT ?`;
+      params.push(filters.limit);
+      if (filters.offset) {
+        query += ` OFFSET ?`;
+        params.push(filters.offset);
+      }
+    }
+    const [rows] = await db.execute(query, params);
+    return rows;
   },
 
   // Get single product by ID (supports (conn, productId, storeId?) or (productId, storeId?))

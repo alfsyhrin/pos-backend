@@ -118,6 +118,7 @@ CREATE TABLE `products` (
 
 CREATE TABLE `stores` (
   `id` int(11) NOT NULL,
+  `type` VARCHAR(32) NOT NULL DEFAULT 'store',
   `owner_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
   `address` text DEFAULT NULL,

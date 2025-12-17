@@ -28,9 +28,13 @@ router.delete('/:id', authMiddleware(['owner']), checkTenant, StoreController.de
 router.get('/:store_id/stats', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getStats);
 
 // Create Receipt Template
-router.post('/:store_id/receipt-template', authMiddleware(['owner']), checkTenant, StoreController.createReceiptTemplate);
+router.post('/:store_id/receipt-template', authMiddleware(['owner', 'admin']), checkTenant, StoreController.createReceiptTemplate);
 
 // Get Receipt Template
 router.get('/:store_id/receipt-template', authMiddleware(['owner', 'admin']), checkTenant, StoreController.getReceiptTemplate);
+
+// Info bisnis (owner only)
+router.get('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.getBusinessProfile);
+router.put('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.updateBusinessProfile);
 
 module.exports = router;

@@ -3,6 +3,26 @@ const ProductModel = require('../models/product.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
 
+function mapTransactionToFrontend(tx, items = []) {
+  return {
+    idShort: tx.id ? String(tx.id).padStart(6, '0') : '',
+    idFull: tx.id ? `TX${String(tx.id).padStart(6, '0')}` : '',
+    createdAt: tx.created_at ? new Date(tx.created_at) : new Date(),
+    method: tx.payment_method || tx.method || '',
+    total: Math.round(tx.total_cost || tx.total || 0),
+    received: Math.round(tx.received_amount || tx.received || 0),
+    change: Math.round(tx.change_amount || tx.change || 0),
+    items: items.map(it => ({
+      productId: it.product_id,
+      name: it.product_name || it.name,
+      sku: it.sku,
+      price: Number(it.price),
+      qty: it.quantity || it.qty,
+      lineTotal: Number(it.subtotal || it.lineTotal || (it.price * (it.quantity || it.qty))),
+    })),
+  };
+}
+
 const TransactionController = {
     // Membuat transaksi baru
     async create(req, res) {
@@ -110,7 +130,10 @@ const TransactionController = {
                 }
 
                 await conn.commit();
-                return response.created(res, transaction, 'Transaction created successfully');
+                const txId = transactionId;
+                const txRow = await TransactionModel.findById(conn, txId, store_id);
+                const mapped = mapTransactionToFrontend(txRow, processedItems);
+                return response.created(res, mapped, 'Transaction created successfully');
             } catch (errTx) {
                 await conn.rollback();
                 throw errTx;
@@ -131,13 +154,12 @@ const TransactionController = {
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            const transaction = await TransactionModel.findById(conn, id, store_id);
+            const tx = await TransactionModel.findById(conn, id, store_id);
+            if (!tx) return response.notFound(res, 'Transaction not found', 404);
 
-            if (!transaction) {
-                return response.notFound(res, 'Transaction not found', 404);
-            }
-
-            return response.success(res, transaction, 'Transaction found');
+            const items = await TransactionModel.getItemsByTransactionId(conn, id);
+            const mapped = mapTransactionToFrontend(tx, items);
+            return response.success(res, mapped, 'Transaction found');
         } catch (error) {
             return response.error(res, 'Error getting transaction', 500, error);
         } finally {
@@ -171,7 +193,12 @@ const TransactionController = {
             // Menghitung total transaksi
             const total = await TransactionModel.countByStore(conn, store_id, { payment_status });
 
-            return response.paginated(res, transactions, {
+            const mapped = await Promise.all(transactions.map(async tx => {
+                const items = await TransactionModel.getItemsByTransactionId(conn, tx.id);
+                return mapTransactionToFrontend(tx, items);
+            }));
+
+            return response.paginated(res, mapped, {
                 total,
                 page: pageNum,
                 limit: limitNum,

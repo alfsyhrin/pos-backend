@@ -3,18 +3,20 @@ const response = require('../utils/response');
 const pool = require('../config/db'); // main DB (subscriptions, clients)
 const { getTenantConnection } = require('../config/db');
 const path = require('path');
+const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
-const PRODUCT_LIMITS = {
-  'Standard': 100,
-  'Pro': 1000,
-  'Eksklusif': 10000
-};
+// const PRODUCT_LIMITS = {
+  // 'Standard': 100,
+  // 'Pro': 1000,
+  // 'Eksklusif': 10000
+// };
 
-const IMAGE_LIMITS = {
-  'Standard': 0,
-  'Pro': 100,
-  'Eksklusif': 10000
-};
+
+// const IMAGE_LIMITS = {
+  // 'Standard': 0,
+  // 'Pro': 100,
+  // 'Eksklusif': 10000
+// };
 
 const ProductController = {
   // Create new product with discount logic
@@ -66,6 +68,13 @@ const ProductController = {
         is_active: is_active ?? 1,
         ...promoMapping
       };
+
+      const plan = req.user.plan; // misal: 'Standard', 'Pro', 'Eksklusif'
+      const productLimit = getPackageLimit(plan, 'product_limit');
+      const totalProduct = await ProductModel.countByStore(conn, store_id);
+      if (totalProduct >= productLimit) {
+        return response.badRequest(res, `Batas produk (${productLimit}) untuk paket ${plan} telah tercapai`);
+      }
 
       const productId = await ProductModel.create(conn, productData);
       const created = await ProductModel.findById(conn, productId, store_id);
@@ -365,6 +374,17 @@ const ProductController = {
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
       conn = await getTenantConnection(dbName);
 
+      // --- VALIDASI LIMIT GAMBAR PRODUK ---
+      const plan = req.user.plan;
+      const imageLimit = getPackageLimit(plan, 'image_limit');
+      // Hitung produk yang sudah punya gambar
+      const [rows] = await conn.execute('SELECT COUNT(*) as total FROM products WHERE image_url IS NOT NULL AND image_url != ""');
+      const totalImage = rows[0].total || 0;
+      if (totalImage >= imageLimit) {
+        return response.badRequest(res, `Batas upload gambar (${imageLimit}) untuk paket ${plan} telah tercapai`);
+      }
+      // --- END VALIDASI ---
+
       const imagePath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
       await conn.execute('UPDATE products SET image_url = ? WHERE id = ?', [imagePath, product_id]);
 
@@ -376,7 +396,7 @@ const ProductController = {
     }
   },
 
-  async search(req, res) {
+  search: async function (req, res) {
     let conn;
     try {
       const { store_id } = req.params;
@@ -390,7 +410,7 @@ const ProductController = {
       const filters = {};
       if (q) filters.search = q;
       if (category) filters.category = category;
-      if (sku) filters.search = sku; // SKU juga masuk ke search
+      if (sku) filters.sku = sku;
       filters.limit = parseInt(limit, 10);
       filters.offset = parseInt(offset, 10);
 
