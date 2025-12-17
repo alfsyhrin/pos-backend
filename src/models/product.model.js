@@ -17,6 +17,11 @@ function resolveDbAndArgs(first, second) {
   return { db: pool, args: first };
 }
 
+function isConn(obj) {
+  // Cek apakah obj adalah koneksi mysql2
+  return obj && typeof obj.execute === 'function';
+}
+
 const ProductModel = {
   // Create new product (supports create(conn, productData) or create(productData))
   async create(connOrData, maybeData) {
