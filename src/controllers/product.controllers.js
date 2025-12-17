@@ -148,6 +148,8 @@ const ProductController = {
 
       return response.success(res, mapped, 'Produk berhasil diambil');
     } catch (error) {
+      // Tambahkan log error detail
+      console.error('GetAll Products Error:', error);
       return response.error(res, 'Terjadi kesalahan saat mengambil produk', 500, error);
     } finally {
       if (conn) await conn.end();
