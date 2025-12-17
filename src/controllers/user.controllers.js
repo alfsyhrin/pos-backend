@@ -101,17 +101,17 @@ const UserController = {
             }
 
             // cek limit
-            if (USER_LIMIT_POLICY === 'total') {
-                const maxUser = USER_LIMITS[plan];
-                const [users] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ?', [owner_id]);
-                if (users[0].total >= maxUser) return res.status(400).json({ message: 'Batas jumlah user sudah tercapai untuk paket ini.' });
-            } else {
-                const limitForRole = PLAN_ROLE_LIMITS[plan]?.[role] ?? 0;
-                const [roleCount] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ? AND role = ?', [owner_id, role]);
-                if (roleCount[0].total >= limitForRole) {
-                  return res.status(400).json({ message: `Batas user untuk role "${role}" pada paket ${plan} sudah tercapai.` });
-                }
-            }
+            // if (USER_LIMIT_POLICY === 'total') {
+            //     const maxUser = USER_LIMITS[plan];
+            //     const [users] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ?', [owner_id]);
+            //     if (users[0].total >= maxUser) return res.status(400).json({ message: 'Batas jumlah user sudah tercapai untuk paket ini.' });
+            // } else {
+            //     const limitForRole = PLAN_ROLE_LIMITS[plan]?.[role] ?? 0;
+            //     const [roleCount] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ? AND role = ?', [owner_id, role]);
+            //     if (roleCount[0].total >= limitForRole) {
+            //       return res.status(400).json({ message: `Batas user untuk role "${role}" pada paket ${plan} sudah tercapai.` });
+            //     }
+            // }
 
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create(conn, { owner_id, store_id, name, username, password: hashed, role });
