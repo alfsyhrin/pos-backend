@@ -23,10 +23,10 @@ const ProductController = {
     try {
       const { store_id } = req.params;
       const {
-        name, sku, price, stock, image_url, is_active,
-        category, jenis_diskon, nilai_diskon,
-        diskon_bundle_min_qty, diskon_bundle_value,
-        buy_qty, free_qty, description
+        name, sku, barcode, price, cost_price, stock, image_url, is_active,
+        category, description,
+        promoType, promoPercent, promoAmount, buyQty, freeQty, bundleQty, bundleTotalPrice,
+        jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty
       } = req.body;
 
       const owner_id = req.user.owner_id;
@@ -35,50 +35,66 @@ const ProductController = {
 
       conn = await getTenantConnection(dbName);
 
-      // --- PEMBATASAN JUMLAH PRODUK BERDASARKAN PLAN (subscriptions di main DB) ---
-      const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
-      const plan = subs[0]?.plan || 'Standard';
-      const maxProduct = PRODUCT_LIMITS[plan];
-
-      // Hitung jumlah produk di tenant
-      const [productsCountRows] = await conn.query('SELECT COUNT(*) AS total FROM products WHERE owner_id = ?', [owner_id]);
-      if (productsCountRows[0].total >= maxProduct) {
-        return res.status(400).json({ message: 'Batas jumlah produk sudah tercapai untuk paket ini.' });
+      // Validasi barcode unik per store
+      if (barcode) {
+        const existing = await ProductModel.findByBarcode(conn, store_id, barcode);
+        if (existing) return response.badRequest(res, 'Barcode sudah terdaftar di toko ini');
       }
 
-      // --- PEMBATASAN PRODUK BERGAMBAR ---
-      if (image_url) {
-        const maxImage = IMAGE_LIMITS[plan];
-        const [count] = await conn.query(
-          'SELECT COUNT(*) AS total FROM products WHERE owner_id = ? AND image_url IS NOT NULL AND image_url != ""',
-          [owner_id]
-        );
-        if (count[0].total >= maxImage) {
-          return res.status(400).json({ message: 'Batas produk bergambar sudah tercapai untuk paket ini.' });
-        }
-      }
+      // Mapping promo/diskon
+      const promoMapping = {
+        jenis_diskon: promoType || jenis_diskon || null,
+        nilai_diskon: promoPercent || promoAmount || nilai_diskon || null,
+        buy_qty: buyQty || buy_qty || null,
+        free_qty: buyQty || free_qty || null,
+        diskon_bundle_min_qty: bundleQty || diskon_bundle_min_qty || null,
+        diskon_bundle_value: bundleTotalPrice || diskon_bundle_value || null
+      };
 
       const productData = {
         owner_id,
         store_id,
         name,
         sku,
+        barcode,
         price,
+        cost_price: cost_price || 0,
         stock,
         category: category ?? null,
         description: description ?? null,
         image_url: image_url ?? null,
         is_active: is_active ?? 1,
-        jenis_diskon: jenis_diskon ?? null,
-        nilai_diskon: nilai_diskon ?? null,
-        diskon_bundle_min_qty: diskon_bundle_min_qty ?? null,
-        diskon_bundle_value: diskon_bundle_value ?? null,
-        buy_qty: buy_qty ?? null,
-        free_qty: free_qty ?? null
+        ...promoMapping
       };
 
       const productId = await ProductModel.create(conn, productData);
-      return response.created(res, { id: productId, ...productData }, 'Produk berhasil ditambahkan');
+      const created = await ProductModel.findById(conn, productId, store_id);
+
+      // Mapping response agar cocok dengan frontend
+      const mapped = {
+        id: created.id,
+        name: created.name,
+        sku: created.sku,
+        barcode: created.barcode,
+        costPrice: Number(created.cost_price || 0),
+        sellPrice: Number(created.price || 0),
+        stock: created.stock,
+        category: created.category,
+        description: created.description,
+        imageUrl: created.image_url,
+        promoType: created.jenis_diskon,
+        promoPercent: Number(created.nilai_diskon || 0),
+        promoAmount: Number(created.nilai_diskon || 0),
+        buyQty: created.buy_qty,
+        freeQty: created.free_qty,
+        bundleQty: created.diskon_bundle_min_qty,
+        bundleTotalPrice: Number(created.diskon_bundle_value || 0),
+        isActive: created.is_active,
+        createdAt: created.created_at,
+        updatedAt: created.updated_at
+      };
+
+      return response.created(res, mapped, 'Produk berhasil ditambahkan');
     } catch (error) {
       return response.error(res, error, 'Terjadi kesalahan saat membuat produk');
     } finally {
@@ -97,15 +113,31 @@ const ProductController = {
       conn = await getTenantConnection(dbName);
       const products = await ProductModel.findAllByStore(conn, store_id);
 
-      products.forEach(product => {
-        if (product.diskon_bundle_min_qty && product.diskon_bundle_value) {
-          if (product.stock >= product.diskon_bundle_min_qty) {
-            product.price -= product.diskon_bundle_value;
-          }
-        }
-      });
+      // Mapping agar cocok dengan frontend
+      const mapped = products.map(product => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode,
+        costPrice: Number(product.cost_price || 0),
+        sellPrice: Number(product.price || 0),
+        stock: product.stock,
+        category: product.category,
+        description: product.description,
+        imageUrl: product.image_url,
+        promoType: product.jenis_diskon,
+        promoPercent: Number(product.nilai_diskon || 0),
+        promoAmount: Number(product.nilai_diskon || 0),
+        buyQty: product.buy_qty,
+        freeQty: product.free_qty,
+        bundleQty: product.diskon_bundle_min_qty,
+        bundleTotalPrice: Number(product.diskon_bundle_value || 0),
+        isActive: product.is_active,
+        createdAt: product.created_at,
+        updatedAt: product.updated_at
+      }));
 
-      return response.success(res, products, 'Produk berhasil diambil');
+      return response.success(res, mapped, 'Produk berhasil diambil');
     } catch (error) {
       return response.error(res, 'Terjadi kesalahan saat mengambil produk', 500, error);
     } finally {
@@ -342,7 +374,59 @@ const ProductController = {
     } finally {
       if (conn) await conn.end();
     }
-  }
+  },
+
+  async search(req, res) {
+    let conn;
+    try {
+      const { store_id } = req.params;
+      const { q, category, sku, limit = 20, offset = 0 } = req.query;
+      const dbName = req.user.db_name;
+      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      conn = await getTenantConnection(dbName);
+
+      // Build filters
+      const filters = {};
+      if (q) filters.search = q;
+      if (category) filters.category = category;
+      if (sku) filters.search = sku; // SKU juga masuk ke search
+      filters.limit = parseInt(limit, 10);
+      filters.offset = parseInt(offset, 10);
+
+      const products = await ProductModel.findAllByStore(conn, store_id, filters);
+
+      // Mapping agar cocok dengan frontend
+      const mapped = products.map(product => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode,
+        costPrice: Number(product.cost_price || 0),
+        sellPrice: Number(product.price || 0),
+        stock: product.stock,
+        category: product.category,
+        description: product.description,
+        imageUrl: product.image_url,
+        promoType: product.jenis_diskon,
+        promoPercent: Number(product.nilai_diskon || 0),
+        promoAmount: Number(product.nilai_diskon || 0),
+        buyQty: product.buy_qty,
+        freeQty: product.free_qty,
+        bundleQty: product.diskon_bundle_min_qty,
+        bundleTotalPrice: Number(product.diskon_bundle_value || 0),
+        isActive: product.is_active,
+        createdAt: product.created_at,
+        updatedAt: product.updated_at
+      }));
+
+      return response.success(res, mapped, 'Hasil pencarian produk');
+    } catch (error) {
+      return response.error(res, 'Terjadi kesalahan saat mencari produk', 500, error);
+    } finally {
+      if (conn) await conn.end();
+    }
+  },
 };
 
 module.exports = ProductController;

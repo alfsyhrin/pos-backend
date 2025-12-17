@@ -168,6 +168,32 @@ BCRYPT_SALT_ROUNDS=10
 - **GET** `/api/stores/:store_id/products`
   - **Headers:** Authorization: Bearer {token}
   - **Response:** Array of product objects
+  ```json
+  [
+    {
+      "id": 1,
+      "name": "Indomie Goreng",
+      "sku": "IND-001",
+      "barcode": "1234567890123",
+      "costPrice": 2500,
+      "sellPrice": 3500,
+      "stock": 100,
+      "category": "Makanan & Minuman",
+      "description": "Mi goreng favorit",
+      "imageUrl": "https://...",
+      "promoType": "percentage",
+      "promoPercent": 10,
+      "promoAmount": 10,
+      "buyQty": 2,
+      "freeQty": 1,
+      "bundleQty": 3,
+      "bundleTotalPrice": 5000,
+      "isActive": 1,
+      "createdAt": "2025-12-01 10:22:11",
+      "updatedAt": "2025-12-15 19:05:45"
+    }
+  ]
+  ```
 
 #### Create Product
 - **POST** `/api/stores/:store_id/products`
@@ -175,27 +201,82 @@ BCRYPT_SALT_ROUNDS=10
   - **Body:**
     ```json
     {
-      "name": "Indomie Goreng",
-      "sku": "IND-001",
-      "price": 3500,
-      "stock": 100,
+      "name": "Nama Produk",
+      "sku": "SKU001",
+      "barcode": "1234567890123",
+      "price": 10000,
+      "cost_price": 8000,
+      "stock": 10,
       "category": "Makanan & Minuman",
-      "description": "Mi goreng favorit",
+      "description": "Deskripsi produk",
       "image_url": "https://...",
-      "jenis_diskon": null,
-      "nilai_diskon": null,
-      "diskon_bundle_min_qty": null,
-      "diskon_bundle_value": null,
-      "buy_qty": null,
-      "free_qty": null
-    }
+      "promoType": "percentage",
+      "promoPercent": 10,
+      "promoAmount": 10,
+      "buyQty": 2,
+      "freeQty": 1,
+      "bundleQty": 3,
+      "bundleTotalPrice": 5000
+    } 
     ```
   - **Response:** Product object
+    ```json
+      {
+    "success": true,
+    "data": {
+      "id": 2,
+      "name": "Nama Produk",
+      "sku": "SKU001",
+      "barcode": "1234567890123",
+      "costPrice": 8000,
+      "sellPrice": 10000,
+      "stock": 10,
+      "category": "Makanan & Minuman",
+      "description": "Deskripsi produk",
+      "imageUrl": "https://...",
+      "promoType": "percentage",
+      "promoPercent": 10,
+      "promoAmount": 10,
+      "buyQty": 2,
+      "freeQty": 1,
+      "bundleQty": 3,
+      "bundleTotalPrice": 5000,
+      "isActive": 1,
+      "createdAt": "2025-12-01 10:22:11",
+      "updatedAt": "2025-12-15 19:05:45"
+    },
+    "message": "Produk berhasil ditambahkan"
+  }
+  ```
 
 #### Get Product by ID
 - **GET** `/api/stores/:store_id/products/:id`
   - **Headers:** Authorization: Bearer {token}
   - **Response:** Product object
+  ```json
+    {
+    "id": 2,
+    "name": "Nama Produk",
+    "sku": "SKU001",
+    "barcode": "1234567890123",
+    "costPrice": 8000,
+    "sellPrice": 10000,
+    "stock": 10,
+    "category": "Makanan & Minuman",
+    "description": "Deskripsi produk",
+    "imageUrl": "https://...",
+    "promoType": "percentage",
+    "promoPercent": 10,
+    "promoAmount": 10,
+    "buyQty": 2,
+    "freeQty": 1,
+    "bundleQty": 3,
+    "bundleTotalPrice": 5000,
+    "isActive": 1,
+    "createdAt": "2025-12-01 10:22:11",
+    "updatedAt": "2025-12-15 19:05:45"
+  }
+  ```
 
 #### Update Product
 - **PUT** `/api/stores/:store_id/products/:id`
@@ -216,14 +297,26 @@ BCRYPT_SALT_ROUNDS=10
     {
       "success": true,
       "data": {
-        "id": 1,
-        "store_id": 3,
-        "name": "Indomie Goreng",
-        "sku": "IND-001",
+        "id": 2,
+        "name": "Nama Produk",
+        "sku": "SKU001",
         "barcode": "1234567890123",
-        "price": 3500,
-        "stock": 100,
-        ...
+        "costPrice": 8000,
+        "sellPrice": 10000,
+        "stock": 10,
+        "category": "Makanan & Minuman",
+        "description": "Deskripsi produk",
+        "imageUrl": "https://...",
+        "promoType": "percentage",
+        "promoPercent": 10,
+        "promoAmount": 10,
+        "buyQty": 2,
+        "freeQty": 1,
+        "bundleQty": 3,
+        "bundleTotalPrice": 5000,
+        "isActive": 1,
+        "createdAt": "2025-12-01 10:22:11",
+        "updatedAt": "2025-12-15 19:05:45"
       },
       "message": "Produk ditemukan"
     }
@@ -272,6 +365,19 @@ BCRYPT_SALT_ROUNDS=10
       "message": "Produk berhasil ditambah"
     }
     ```
+# Upload Gambar Produk
+**POST** `/api/products/upload-image`
+**Headers:** Authorization: Bearer {token}
+**Body:** form-data
+**image:** file gambar produk
+**product_id:** ID produk yang akan diupdate gambarnya
+**Response:**
+  ```json
+  {
+  "success": true,
+  "image_url": "uploads/tenant_1/1702730000000-nama-gambar.jpg"
+}
+```
 
 ---
 

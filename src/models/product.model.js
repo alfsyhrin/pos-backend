@@ -25,14 +25,13 @@ const ProductModel = {
       const d = cleanNullFields(data);
       const [result] = await db.execute(
         `INSERT INTO products
-          (store_id, name, sku, price, stock, category, description, image_url, is_active,
-           jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty, barcode, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          (store_id, name, sku, barcode, price, cost_price, stock, category, description, image_url, is_active,
+           jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
-          d.store_id, d.name, d.sku, d.price, d.stock, d.category, d.description,
+          d.store_id, d.name, d.sku, d.barcode, d.price, d.cost_price, d.stock, d.category, d.description,
           d.image_url, d.is_active ?? 1, d.jenis_diskon, d.nilai_diskon,
-          d.diskon_bundle_min_qty, d.diskon_bundle_value, d.buy_qty, d.free_qty,
-          d.barcode
+          d.diskon_bundle_min_qty, d.diskon_bundle_value, d.buy_qty, d.free_qty
         ]
       );
       return result.insertId;
@@ -125,7 +124,7 @@ const ProductModel = {
       const allowedFields = [
         'name','sku','price','stock','image_url','is_active','category',
         'jenis_diskon','nilai_diskon','diskon_bundle_min_qty','diskon_bundle_value',
-        'buy_qty','free_qty','description','barcode'
+        'buy_qty','free_qty','description','barcode', 'cost_price'
       ];
       allowedFields.forEach(field => {
         if (updateData[field] !== undefined) {

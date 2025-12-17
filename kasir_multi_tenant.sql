@@ -74,6 +74,7 @@ CREATE TABLE `products` (
   `sku` varchar(50) DEFAULT NULL,
   `barcode` varchar(100) DEFAULT NULL,
   `price` decimal(10,2) NOT NULL,
+  `cost_price` DECIMAL(18,2) DEFAULT 0,
   `stock` int(11) DEFAULT 0,
   `category` enum('Kesehatan & Kecantikan','Rumah Tangga & Gaya Hidup','Fashion & Aksesoris','Elektronik','Bayi & Anak','Makanan & Minuman') DEFAULT NULL,
   `description` text DEFAULT NULL,
@@ -444,6 +445,7 @@ ALTER TABLE `users`
   ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `users_ibfk_2` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE SET NULL;
 COMMIT;
+
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

@@ -29,6 +29,9 @@ router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin']), chec
 // Find Product by Barcode (protected route)
 router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.findByBarcode);
 
+// Search products by name, sku, barcode, or category (protected route)
+router.get('/:store_id/products/search', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.search);
+
 // Endpoint upload gambar produk
 router.post('/upload-image', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.uploadProductImage);
 
