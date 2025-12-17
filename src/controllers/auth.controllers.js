@@ -80,15 +80,24 @@ const AuthController = {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
+      // Ambil plan dari user, atau dari tabel clients/subscriptions jika perlu
+      let plan = user.plan;
+      if (!plan && ownerIdForToken) {
+          // Coba ambil dari tabel clients
+          const [clients] = await db.query('SELECT plan FROM clients WHERE owner_id = ?', [ownerIdForToken]);
+          plan = clients[0]?.plan || 'Standard';
+      }
+
       const payload = {
-        id: user.id,
-        owner_id: ownerIdForToken,
-        store_id: user.store_id || null,
-        role: user.role || userType,
-        username: user.username || user.email,
-        name: user.name || user.business_name,
-        email: user.email || null,
-        db_name
+          id: user.id,
+          owner_id: ownerIdForToken,
+          store_id: user.store_id || null,
+          role: user.role || userType,
+          username: user.username || user.email,
+          name: user.name || user.business_name,
+          email: user.email || null,
+          db_name,
+          plan // <-- tambahkan ini!
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });

@@ -70,7 +70,8 @@ app.get('/', (req, res) => {
                 stats: 'GET /api/stores/:store_id/products/stats',
                 low_stock: 'GET /api/stores/:store_id/products/low-stock?threshold=10',
                 bulk_update: 'POST /api/stores/:store_id/products/bulk-update',
-                update_stock: 'PUT /api/stores/:store_id/products/:id/stock'
+                update_stock: 'PUT /api/stores/:store_id/products/:id/stock',
+                upload_image: 'POST /api/stores/upload-image'
             }
         },
         documentation: 'API menggunakan JWT authentication. Include header: Authorization: Bearer <token>'
