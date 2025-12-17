@@ -71,7 +71,16 @@ const UserModel = {
             `UPDATE users SET ${fields.join(', ')} WHERE id = ?`,
             values
         );
-    }
+    },
+
+    // Hitung jumlah user per role di store tertentu
+    async countByRole(conn, store_id, role) {
+        const [rows] = await conn.execute(
+            `SELECT COUNT(*) AS total FROM users WHERE store_id = ? AND role = ? AND is_active = 1`,
+            [store_id, role]
+        );
+        return rows[0].total || 0;
+    },
 };
 
 module.exports = UserModel;
