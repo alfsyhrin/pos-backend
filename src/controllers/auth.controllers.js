@@ -84,7 +84,6 @@ const AuthController = {
       // Ambil plan dari user, atau dari tabel subscriptions jika perlu
       let plan = user.plan;
       if (!plan && ownerIdForToken) {
-          // Ambil dari tabel subscriptions, bukan clients!
           const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ? AND status = "Aktif" ORDER BY end_date DESC LIMIT 1', [ownerIdForToken]);
           plan = subs[0]?.plan || 'Standard';
       }
@@ -98,17 +97,24 @@ const AuthController = {
           name: user.name || user.business_name,
           email: user.email || null,
           db_name,
-          plan // <-- tambahkan ini!
+          plan
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-      // Setelah password valid dan sebelum res.json()
-      await ActivityLogModel.create(tenantConn, {
-        user_id: user.id,
-        store_id: user.store_id,
-        action: 'login',
-        detail: 'Login berhasil'
-      });
+
+      // PATCH: pastikan tenantConn selalu ada sebelum log aktivitas
+      if (!tenantConn && db_name) {
+        tenantConn = await getTenantConnection(db_name);
+      }
+      if (tenantConn) {
+        await ActivityLogModel.create(tenantConn, {
+          user_id: user.id,
+          store_id: user.store_id,
+          action: 'login',
+          detail: 'Login berhasil'
+        });
+      }
+
       res.json({ success: true, message: 'Login berhasil', token, user: payload });
     } catch (error) {
       console.error('Login error:', error);
