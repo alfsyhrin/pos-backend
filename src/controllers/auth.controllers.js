@@ -80,12 +80,12 @@ const AuthController = {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
-      // Ambil plan dari user, atau dari tabel clients/subscriptions jika perlu
+      // Ambil plan dari user, atau dari tabel subscriptions jika perlu
       let plan = user.plan;
       if (!plan && ownerIdForToken) {
-          // Coba ambil dari tabel clients
-          const [clients] = await db.query('SELECT plan FROM clients WHERE owner_id = ?', [ownerIdForToken]);
-          plan = clients[0]?.plan || 'Standard';
+          // Ambil dari tabel subscriptions, bukan clients!
+          const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ? AND status = "Aktif" ORDER BY end_date DESC LIMIT 1', [ownerIdForToken]);
+          plan = subs[0]?.plan || 'Standard';
       }
 
       const payload = {
