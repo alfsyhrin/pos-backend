@@ -22,6 +22,19 @@ SET time_zone = "+00:00";
 --
 
 -- --------------------------------------------------------
+-- Struktur dari tabel `activity_logs`
+CREATE TABLE IF NOT EXISTS `activity_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `store_id` int(11) DEFAULT NULL,
+  `action` varchar(64) DEFAULT NULL,
+  `detail` text DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+
 
 --
 -- Struktur dari tabel `clients`

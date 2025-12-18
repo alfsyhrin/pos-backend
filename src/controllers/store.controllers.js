@@ -1,4 +1,5 @@
 const StoreModel = require('../models/store.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
 
@@ -186,6 +187,15 @@ const StoreController = {
             if (!isUpdated) return response.error(res, 'Gagal mengupdate toko', 400);
 
             const updatedStore = await StoreModel.findById(conn, storeId, owner_id);
+
+            // Setelah update pengaturan toko
+            await ActivityLogModel.create(conn, {
+                user_id: req.user.id,
+                store_id: req.params.store_id,
+                action: 'update_setting',
+                detail: 'Update pengaturan toko'
+            });
+
             return response.success(res, updatedStore, 'Toko berhasil diupdate');
         } catch (error) {
             console.error('Update store error:', error);

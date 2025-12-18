@@ -928,3 +928,79 @@ Jika ada error "Akses ditolak", cek role dan store_id di token.
 - **Response:**
   ```json
   { "success": true, "message": "Import data berhasil" }
+
+### Reset Data Tenant
+
+- **Endpoint:** `DELETE /api/backup/reset`
+- **Headers:** Authorization: Bearer {token}
+- **Fungsi:** Menghapus semua data produk, karyawan (kecuali owner), transaksi, dan detail transaksi di database tenant.
+- **Data owner tidak dihapus** (karena owner diambil dari database utama).
+- **Response:**
+  ```json
+  { "success": true, "message": "Semua data berhasil direset, kecuali data owner." }
+
+
+---
+
+## 4. **Catatan**
+- **Hanya data di tenant yang dihapus.**
+- **Data owner tetap aman** (tidak dihapus).
+- **Pastikan endpoint ini hanya bisa diakses oleh owner/admin!**
+
+---
+
+**Dengan ini, fitur reset data tenant sudah siap digunakan!**
+
+---
+
+## Arsitektur Offline-Online & Sinkronisasi Data
+
+### Arsitektur
++-------------------+ INTERNET +-------------------+
+| Device/Client | <---------------------> | Server |
+| (Mobile/Web/PC) | | (MySQL/MariaDB) |
++-------------------+ +-------------------+
+| - SQLite Lokal | | - Multi-tenant |
+| - offline_db.sql | | - kasir_tenant_X |
++-------------------+ +-------------------+
+
+
+### Flow Sinkronisasi
+
+1. **Saat Online**
+   - Semua transaksi, produk, dsb. langsung ke server via API.
+   - Data di server (MySQL) selalu up-to-date.
+
+2. **Saat Offline**
+   - Semua transaksi, produk, dsb. disimpan di SQLite lokal (offline_db.sql).
+   - Data baru diberi flag `unsynced` (misal: `is_synced = 0`).
+
+3. **Saat Koneksi Kembali**
+   - Aplikasi cek data `is_synced = 0` di SQLite.
+   - Kirim data satu per satu ke server via API.
+   - Jika sukses, update flag jadi `is_synced = 1`.
+   - Jika gagal, tetap di queue untuk dicoba lagi nanti.
+
+### Catatan
+
+- **Database offline (SQLite)** hanya ada di device user, tidak dibuat otomatis oleh backend.
+- **register_client.js** hanya membuat database tenant di server (MySQL).
+- **Struktur tabel di SQLite sebaiknya mirip dengan MySQL** agar sinkronisasi mudah.
+- **Keamanan:** Data offline di device harus diamankan (enkripsi, proteksi device).
+- **Konflik data:** Jika ada perubahan data yang sama di beberapa device saat offline, perlu strategi merge/resolve saat sinkronisasi.
+
+---
+
+### Sinkronisasi Offline-Online (Client)
+
+- Setiap device/user memiliki file SQLite sendiri (offline_db.db), disimpan di device (bukan di server).
+- Data transaksi/produk baru disimpan ke SQLite saat offline.
+- Saat online, aplikasi akan:
+  - Membaca data yang belum sinkron (`is_synced = 0`)
+  - Mengirim data ke server via API
+  - Jika sukses, update flag `is_synced = 1`
+- File SQLite **tidak pernah diupload ke server**. Hanya data baru yang dikirim via API.
+- Penempatan file:
+  - Android/iOS: folder aplikasi (otomatis oleh library SQLite)
+  - Desktop: folder user (misal, AppData/Roaming/YourApp)
+  - Web: IndexedDB (bukan file fisik)

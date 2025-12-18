@@ -1,5 +1,6 @@
 const TransactionModel = require('../models/transaction.model');
 const ProductModel = require('../models/product.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
 
@@ -133,6 +134,15 @@ const TransactionController = {
                 const txId = transactionId;
                 const txRow = await TransactionModel.findById(conn, txId, store_id);
                 const mapped = mapTransactionToFrontend(txRow, processedItems);
+
+                // Setelah transaksi berhasil
+                await ActivityLogModel.create(conn, {
+                  user_id: req.user.id,
+                  store_id: req.params.store_id,
+                  action: 'transaction',
+                  detail: `Transaksi baru, total: Rp${total_cost}`
+                });
+
                 return response.created(res, mapped, 'Transaction created successfully');
             } catch (errTx) {
                 await conn.rollback();

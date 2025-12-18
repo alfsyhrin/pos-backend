@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const UserModel = require('../models/user.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const db = require('../config/db'); // pool
 const { getTenantConnection } = require('../config/db');
 
@@ -102,6 +103,14 @@ const AuthController = {
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
       res.json({ success: true, message: 'Login berhasil', token, user: payload });
+
+      // Setelah login sukses
+      await ActivityLogModel.create(conn, {
+        user_id: user.id,
+        store_id: user.store_id,
+        action: 'login',
+        detail: 'Login berhasil'
+      });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ success: false, message: 'Terjadi kesalahan server', error: error.message });

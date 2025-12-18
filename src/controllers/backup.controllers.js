@@ -1,4 +1,5 @@
 const { getTenantConnection } = require('../config/db');
+const ActivityLogModel = require('../models/activityLog.model');
 
 function toMySQLDatetime(dt) {
   if (!dt) return null;
@@ -36,6 +37,14 @@ exports.exportData = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=backup_${type}_${Date.now()}.json`);
     res.setHeader('Content-Type', 'application/json');
     res.json(data);
+
+    // Log activity
+    await ActivityLogModel.create(conn, {
+      user_id: req.user.id,
+      store_id: req.user.store_id || null,
+      action: 'backup_data',
+      detail: 'Backup data dilakukan'
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Gagal export data', error: error.message });
   } finally {
@@ -110,8 +119,47 @@ exports.importData = async (req, res) => {
     }
 
     res.json({ success: true, message: 'Import data berhasil' });
+
+    // Log activity
+    await ActivityLogModel.create(conn, {
+      user_id: req.user.id,
+      store_id: req.user.store_id || null,
+      action: 'import_data',
+      detail: 'Import data dilakukan'
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Gagal import data', error: error.message });
+  } finally {
+    if (conn) await conn.end();
+  }
+};
+
+exports.resetData = async (req, res) => {
+  let conn;
+  try {
+    const dbName = req.user.db_name;
+    if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
+    conn = await getTenantConnection(dbName);
+
+    // Hapus semua data, kecuali owner
+    // Urutan penting karena foreign key!
+    await conn.query('DELETE FROM transaction_items');
+    await conn.query('DELETE FROM transactions');
+    await conn.query('DELETE FROM products');
+    await conn.query('DELETE FROM users WHERE role != "owner"');
+    // Jika ada tabel lain (misal: categories, struck_receipt), tambahkan juga di sini
+
+    res.json({ success: true, message: 'Semua data berhasil direset, kecuali data owner.' });
+
+    // Log activity
+    await ActivityLogModel.create(conn, {
+      user_id: req.user.id,
+      store_id: req.user.store_id || null,
+      action: 'reset_data',
+      detail: 'Reset data dilakukan'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Gagal reset data', error: error.message });
   } finally {
     if (conn) await conn.end();
   }

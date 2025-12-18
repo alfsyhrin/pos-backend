@@ -1,4 +1,5 @@
 const ProductModel = require('../models/product.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const pool = require('../config/db'); // main DB (subscriptions, clients)
 const { getTenantConnection } = require('../config/db');
@@ -103,6 +104,14 @@ const ProductController = {
         createdAt: created.created_at,
         updatedAt: created.updated_at
       };
+
+      // Log aktivitas
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: req.params.store_id,
+        action: 'add_product',
+        detail: `Tambah produk: ${name}`
+      });
 
       return response.created(res, mapped, 'Produk berhasil ditambahkan');
     } catch (error) {
@@ -214,6 +223,15 @@ const ProductController = {
       if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
 
       const updatedProduct = await ProductModel.findById(conn, productId, storeId);
+
+      // Log aktivitas
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: req.params.store_id,
+        action: 'edit_product',
+        detail: `Edit produk: ${updatedProduct.name}`
+      });
+
       return response.success(res, updatedProduct, 'Produk berhasil diupdate');
     } catch (error) {
       return response.error(res, 'Terjadi kesalahan saat mengupdate produk', 500, error);
@@ -243,6 +261,14 @@ const ProductController = {
 
       const isDeleted = await ProductModel.delete(conn, productId, storeId);
       if (!isDeleted) return response.error(res, 'Gagal menghapus produk', 400);
+
+      // Log aktivitas
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: req.params.store_id,
+        action: 'delete_product',
+        detail: `Hapus produk: ${id}`
+      });
 
       return response.success(res, null, 'Produk berhasil dihapus');
     } catch (error) {

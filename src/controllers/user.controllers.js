@@ -1,4 +1,5 @@
 const UserModel = require('../models/user.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const bcrypt = require('bcryptjs');
 const { getTenantConnection } = require('../config/db');
 const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
@@ -116,6 +117,13 @@ const UserController = {
 
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create(conn, { owner_id, store_id, name, username, password: hashed, role });
+            // Setelah tambah user
+            await ActivityLogModel.create(conn, {
+              user_id: req.user.id,
+              store_id: req.params.store_id,
+              action: 'add_user',
+              detail: `Tambah user: ${name}`
+            });
             res.status(201).json({ success: true, message: 'User berhasil ditambah', id: userId });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal menambah user', error: error.message });
@@ -152,6 +160,13 @@ const UserController = {
             if (password) updateData.password = await bcrypt.hash(password, 10);
 
             await UserModel.update(conn, id, updateData);
+            // Setelah edit user
+            await ActivityLogModel.create(conn, {
+              user_id: req.user.id,
+              store_id: req.params.store_id,
+              action: 'edit_user',
+              detail: `Edit user: ${name}`
+            });
             res.json({ success: true, message: 'User berhasil diupdate' });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal update user', error: error.message });
@@ -168,7 +183,17 @@ const UserController = {
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
             conn = await getTenantConnection(dbName);
+            const user = await UserModel.findById(conn, id);
+            if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
             await UserModel.update(conn, id, { is_active: 0 });
+            // Setelah hapus user
+            await ActivityLogModel.create(conn, {
+              user_id: req.user.id,
+              store_id: req.params.store_id,
+              action: 'delete_user',
+              detail: `Hapus user: ${user.name}`
+            });
             res.json({ success: true, message: 'User berhasil dinonaktifkan' });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Gagal hapus user', error: error.message });

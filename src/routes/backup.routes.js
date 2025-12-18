@@ -8,5 +8,6 @@ const upload = multer({ storage: multer.memoryStorage() }); // untuk upload file
 
 router.get('/export', authMiddleware(), checkTenant, backupController.exportData);
 router.post('/import', authMiddleware(), checkTenant, upload.single('file'), backupController.importData);
+router.delete('/reset', authMiddleware(), checkTenant, backupController.resetData);
 
 module.exports = router;
