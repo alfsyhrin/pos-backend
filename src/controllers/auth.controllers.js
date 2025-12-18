@@ -102,15 +102,15 @@ const AuthController = {
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-      res.json({ success: true, message: 'Login berhasil', token, user: payload });
 
-      // Setelah login sukses
-      await ActivityLogModel.create(conn, {
+      // Setelah password valid dan sebelum res.json()
+      await ActivityLogModel.create(tenantConn, {
         user_id: user.id,
         store_id: user.store_id,
         action: 'login',
         detail: 'Login berhasil'
       });
+      res.json({ success: true, message: 'Login berhasil', token, user: payload });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ success: false, message: 'Terjadi kesalahan server', error: error.message });
