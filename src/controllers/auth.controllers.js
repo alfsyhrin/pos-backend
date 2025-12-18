@@ -102,7 +102,6 @@ const AuthController = {
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-
       // Setelah password valid dan sebelum res.json()
       await ActivityLogModel.create(tenantConn, {
         user_id: user.id,
