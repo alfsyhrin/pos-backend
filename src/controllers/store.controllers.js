@@ -7,23 +7,35 @@ const StoreController = {
     async create(req, res) {
         let conn;
         try {
-            const owner_id = req.user.owner_id;
             const dbName = req.user.db_name;
-            const { name, address, phone, receipt_template } = req.body;
-
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            let { store_id } = req.params; // dari URL
+            const { name, username, password, role } = req.body;
+
+            // Jika store_id tidak ada di URL, cari otomatis
+            if (!store_id) {
+                // Cari semua toko milik owner
+                const stores = await StoreModel.findAllByOwner(conn, req.user.owner_id);
+                if (stores.length === 1) {
+                    store_id = stores[0].id;
+                } else if (stores.length > 1) {
+                    return response.badRequest(res, 'Pilih toko/cabang untuk user baru');
+                } else {
+                    return response.badRequest(res, 'Owner belum punya toko/cabang');
+                }
+            }
+
+            const owner_id = req.user.owner_id;
             if (!name || name.trim() === '') {
                 return response.badRequest(res, 'Nama toko harus diisi');
             }
 
-            conn = await getTenantConnection(dbName);
-
             const storeId = await StoreModel.create(conn, {
                 owner_id,
                 name: name.trim(),
-                address: address ? address.trim() : null,
-                phone: phone ? phone.trim() : null,
-                receipt_template: receipt_template ? receipt_template.trim() : null
+                store_id
             });
 
             const store = await StoreModel.findById(conn, storeId, owner_id);

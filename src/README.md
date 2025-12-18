@@ -877,3 +877,54 @@ Jika ada error "Akses ditolak", cek role dan store_id di token.
 - Backend sudah sesuai kebutuhan manajemen karyawan.
 - Dokumentasi testing siap ditambahkan ke README.md.
 - Siap lanjut ke fitur/penyesuaian berikutnya!
+
+### Penambahan User (Admin/Karyawan) oleh Owner
+
+- Endpoint: `POST /api/stores/:store_id/users`
+- Jika owner hanya punya satu toko, store_id bisa dikosongkan (atau tidak diisi di URL), backend akan otomatis memilihkan toko tersebut.
+- Jika owner punya lebih dari satu toko, owner wajib memilih toko (store_id) untuk user baru.
+- Jika owner belum punya toko, proses gagal dan akan diminta membuat toko terlebih dahulu.
+
+**Contoh:**
+- Owner punya 1 toko:
+  - Request: `POST /api/stores/users` (tanpa store_id di URL)
+  - Backend otomatis pakai store_id toko tersebut.
+- Owner punya >1 toko:
+  - Request: `POST /api/stores/users` (tanpa store_id di URL)
+  - Response: "Pilih toko/cabang untuk user baru"
+- Owner belum punya toko:
+  - Response: "Owner belum punya toko/cabang"
+
+### Backup Data (Export)
+
+- **Endpoint:** `GET /api/backup/export?type=all`
+- **Query param:**
+  - `type=all` (default): semua data (users, products, transactions, transaction_items)
+  - `type=users`: hanya data user
+  - `type=products`: hanya data produk
+  - `type=transactions`: hanya data transaksi & detailnya
+
+- **Headers:** Authorization: Bearer {token}
+- **Response:** File JSON berisi data backup
+
+**Contoh response (type=all):**
+```json
+{
+  "users": [ ... ],
+  "products": [ ... ],
+  "transactions": [ ... ],
+  "transaction_items": [ ... ]
+}
+
+### Import Data (Restore)
+
+- **Endpoint:** `POST /api/backup/import`
+- **Headers:** Authorization: Bearer {token}
+- **Body:** File JSON hasil export (format sama dengan backup)
+- **Proses:**
+  - Data akan di-insert/update ke database tenant.
+  - Jika data sudah ada (berdasarkan id/unique key), akan diupdate.
+  - Jika data belum ada, akan diinsert.
+- **Response:**
+  ```json
+  { "success": true, "message": "Import data berhasil" }

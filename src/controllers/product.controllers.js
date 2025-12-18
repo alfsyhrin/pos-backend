@@ -70,6 +70,7 @@ const ProductController = {
       };
 
       const plan = req.user.plan; // misal: 'Standard', 'Pro', 'Eksklusif'
+      console.log('DEBUG plan:', req.user.plan);
       const productLimit = getPackageLimit(plan, 'product_limit');
       const totalProduct = await ProductModel.countByStore(conn, store_id);
       if (totalProduct >= productLimit) {

@@ -14,6 +14,7 @@ const productRoutes = require('./routes/product.routes');
 const transactionRoutes = require('./routes/transaction.routes'); // Tambahkan ini
 const userRoutes = require('./routes/user.routes');
 const reportRoutes = require('./routes/report.routes');
+const backupRoutes = require('./routes/backup.routes');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/stores', transactionRoutes); // Tambahkan ini
 app.use('/api/stores', reportRoutes);
 app.use('/api/stores', productRoutes);
 app.use('/api', userRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Default route
 app.get('/', (req, res) => {
