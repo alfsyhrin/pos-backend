@@ -1,5 +1,13 @@
 const { getTenantConnection } = require('../config/db');
 
+function toMySQLDatetime(dt) {
+  if (!dt) return null;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) return dt;
+  const d = new Date(dt);
+  if (isNaN(d)) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 exports.exportData = async (req, res) => {
   let conn;
   try {
@@ -58,7 +66,7 @@ exports.importData = async (req, res) => {
           `INSERT INTO users (id, owner_id, store_id, name, username, password, role, is_active, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE name=VALUES(name), username=VALUES(username), role=VALUES(role), is_active=VALUES(is_active)`,
-          [user.id, user.owner_id, user.store_id, user.name, user.username, user.password, user.role, user.is_active, user.created_at]
+          [user.id, user.owner_id, user.store_id, user.name, user.username, user.password, user.role, user.is_active, toMySQLDatetime(user.created_at)]
         );
       }
     }
@@ -69,7 +77,12 @@ exports.importData = async (req, res) => {
           `INSERT INTO products (id, store_id, name, sku, barcode, price, cost_price, stock, category, description, image_url, is_active, created_at, updated_at, jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE name=VALUES(name), sku=VALUES(sku), price=VALUES(price), stock=VALUES(stock), is_active=VALUES(is_active)`,
-          [product.id, product.store_id, product.name, product.sku, product.barcode, product.price, product.cost_price, product.stock, product.category, product.description, product.image_url, product.is_active, product.created_at, product.updated_at, product.jenis_diskon, product.nilai_diskon, product.diskon_bundle_min_qty, product.diskon_bundle_value, product.buy_qty, product.free_qty]
+          [
+            product.id, product.store_id, product.name, product.sku, product.barcode, product.price, product.cost_price, product.stock,
+            product.category, product.description, product.image_url, product.is_active,
+            toMySQLDatetime(product.created_at), toMySQLDatetime(product.updated_at),
+            product.jenis_diskon, product.nilai_diskon, product.diskon_bundle_min_qty, product.diskon_bundle_value, product.buy_qty, product.free_qty
+          ]
         );
       }
     }
