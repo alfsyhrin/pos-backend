@@ -1,15 +1,14 @@
 const SubscriptionModel = require('../models/subscription.model');
 const response = require('../utils/response');
+const { getMainConnection } = require('../config/db'); // pastikan ada fungsi ini
 
 const SubscriptionController = {
   async getSubscription(req, res) {
     let conn;
     try {
       const owner_id = req.user.owner_id;
-      const dbName = req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
-
-      conn = await require('../config/db').getTenantConnection(dbName);
+      // PATCH: gunakan koneksi utama, bukan tenant
+      conn = await getMainConnection();
       const data = await SubscriptionModel.getByOwnerId(conn, owner_id);
 
       if (!data) {

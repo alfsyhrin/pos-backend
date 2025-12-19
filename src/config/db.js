@@ -36,6 +36,11 @@ const withTenantConnection = async (dbName, fn) => {
     }
 };
 
+const getMainConnection = async () => {
+    return await pool.getConnection();
+};
+
 module.exports = pool;
 module.exports.getTenantConnection = getTenantConnection;
 module.exports.withTenantConnection = withTenantConnection;
+module.exports.getMainConnection = getMainConnection;
