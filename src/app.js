@@ -17,6 +17,7 @@ const reportRoutes = require('./routes/report.routes');
 const backupRoutes = require('./routes/backup.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
+const ownerRoutes = require('./routes/owner.routes');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api', userRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api', activityLogRoutes);
 app.use('/api', subscriptionRoutes);
+app.use('/api', ownerRoutes);
 
 // Default route
 app.get('/', (req, res) => {
