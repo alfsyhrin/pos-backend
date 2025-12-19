@@ -22,6 +22,8 @@ const SubscriptionController = {
         });
       }
 
+      // Patch: mapping status
+      data.status = (data.status && data.status.toLowerCase() === 'aktif') ? 'active' : data.status;
       return response.success(res, data);
     } catch (err) {
       return response.error(res, err, 'Gagal mengambil data subscription');

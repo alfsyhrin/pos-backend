@@ -5,7 +5,12 @@ const SubscriptionModel = {
        WHERE owner_id = ? ORDER BY end_date DESC LIMIT 1`,
       [owner_id]
     );
-    return rows[0] || null;
+    return rows[0]
+      ? {
+          ...rows[0],
+          status: rows[0].status && rows[0].status.toLowerCase() === 'aktif' ? 'active' : rows[0].status
+        }
+      : null;
   }
 };
 
