@@ -6,6 +6,13 @@ const OwnerModel = {
       [id]
     );
     return rows[0] || null;
+  },
+  async updateById(conn, id, data) {
+    const { business_name, email, phone, address } = data;
+    await conn.execute(
+      'UPDATE owners SET business_name=?, email=?, phone=?, address=? WHERE id=?',
+      [business_name, email, phone, address, id]
+    );
   }
 };
 module.exports = OwnerModel;

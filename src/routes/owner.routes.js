@@ -5,5 +5,6 @@ const OwnerController = require('../controllers/owner.controllers');
 const auth = require('../middleware/auth');
 
 router.get('/owners/:id', auth(), OwnerController.getOwner);
+router.put('/owners/:id', auth(), OwnerController.updateOwner); // <-- Tambahkan ini
 
 module.exports = router;
