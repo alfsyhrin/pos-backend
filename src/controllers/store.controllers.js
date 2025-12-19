@@ -164,7 +164,7 @@ const StoreController = {
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            const { name, address, phone, receipt_template } = req.body;
+            const { name, address, phone, receipt_template, tax_percentage } = req.body;
             const storeId = parseInt(id);
             if (isNaN(storeId)) return response.badRequest(res, 'ID toko tidak valid');
             if (!name || name.trim() === '') return response.badRequest(res, 'Nama toko harus diisi');
@@ -180,7 +180,8 @@ const StoreController = {
                 name: name.trim(),
                 address: address ? address.trim() : null,
                 phone: phone ? phone.trim() : null,
-                receipt_template: receipt_template ? receipt_template.trim() : null
+                receipt_template: receipt_template ? receipt_template.trim() : null,
+                tax_percentage: tax_percentage !== undefined ? tax_percentage : null
             };
 
             const isUpdated = await StoreModel.update(conn, storeId, owner_id, updateData);
@@ -382,6 +383,52 @@ const StoreController = {
             return response.success(res, rows[0], 'Informasi bisnis berhasil diupdate');
         } catch (error) {
             return response.error(res, 'Gagal mengupdate informasi bisnis', 500, error);
+        } finally {
+            if (conn) await conn.end();
+        }
+    },
+
+    // GET store detail
+    async getStore(req, res) {
+        let conn;
+        try {
+            const dbName = req.user.db_name;
+            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            const { store_id } = req.params;
+            const store = await StoreModel.getStoreById(conn, store_id);
+            return response.success(res, store, 'Detail toko berhasil diambil');
+        } catch (error) {
+            console.error('Get store detail error:', error);
+            return response.error(res, 'Terjadi kesalahan saat mengambil detail toko', 500, error);
+        } finally {
+            if (conn) await conn.end();
+        }
+    },
+
+    // UPDATE store detail
+    async updateStore(req, res) {
+        let conn;
+        try {
+            const dbName = req.user.db_name;
+            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            conn = await getTenantConnection(dbName);
+
+            const { store_id } = req.params;
+            const { name, address, phone, receipt_template, tax_percentage } = req.body;
+
+            await StoreModel.updateStore(conn, store_id, {
+                name,
+                address,
+                phone,
+                receipt_template,
+                tax_percentage
+            });
+            return response.success(res, null, 'Detail toko berhasil diupdate');
+        } catch (error) {
+            console.error('Update store detail error:', error);
+            return response.error(res, 'Terjadi kesalahan saat mengupdate detail toko', 500, error);
         } finally {
             if (conn) await conn.end();
         }

@@ -37,4 +37,10 @@ router.get('/:store_id/receipt-template', authMiddleware(['owner', 'admin']), ch
 router.get('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.getBusinessProfile);
 router.put('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.updateBusinessProfile);
 
+// Get store by ID
+router.get('/:store_id', authMiddleware(), checkTenant, StoreController.getStore);
+
+// Update store by ID
+router.put('/:store_id', authMiddleware(), checkTenant, StoreController.updateStore);
+
 module.exports = router;

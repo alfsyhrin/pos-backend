@@ -93,7 +93,8 @@ const TransactionController = {
             }
 
             // Menghitung total transaksi
-            const tax = 0; // Implementasi perhitungan pajak jika perlu
+            const taxPercentage = 0; // Implementasi perhitungan persentase pajak jika perlu
+            const tax = subtotal * (taxPercentage / 100);
             const grandTotal = subtotal + tax - discountTotal;
 
             // Memeriksa pembayaran
@@ -116,7 +117,9 @@ const TransactionController = {
                 items: processedItems,
                 subtotal,
                 discount_total: discountTotal,
-                grand_total: grandTotal
+                grand_total: grandTotal,
+                tax,
+                tax_percentage: taxPercentage
             };
 
             // Simpan transaksi dan item dalam transaksi

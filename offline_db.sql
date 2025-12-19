@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS stores (
   address TEXT,
   phone TEXT,
   receipt_template TEXT,
+  tax_percentage REAL DEFAULT 0,         -- <--- Tambahan kolom pajak
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -75,6 +76,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   customer_name TEXT,
   customer_phone TEXT,
   payment_status TEXT DEFAULT 'pending',
+  tax REAL DEFAULT 0,                   -- <--- Tambahan nominal pajak
+  tax_percentage REAL DEFAULT 0,        -- <--- Tambahan persentase pajak
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   is_synced INTEGER DEFAULT 0

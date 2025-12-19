@@ -1004,3 +1004,112 @@ Jika ada error "Akses ditolak", cek role dan store_id di token.
   - Android/iOS: folder aplikasi (otomatis oleh library SQLite)
   - Desktop: folder user (misal, AppData/Roaming/YourApp)
   - Web: IndexedDB (bukan file fisik)
+
+Log Aktivitas (Activity Log)
+Fitur
+Semua aktivitas penting user (login, tambah/edit/hapus produk, transaksi, update pengaturan, manajemen user, backup/import/reset data) dicatat otomatis di tabel activity_logs pada database tenant.
+Semua role (owner, admin, cashier) bisa melihat log aktivitas di tenant/cabang yang sama.
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  store_id INT,
+  action VARCHAR(64),
+  detail TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+Endpoint API
+GET /api/stores/:store_id/activity-logs
+Headers: Authorization: Bearer {token}
+Response: Array log aktivitas terbaru (limit 50, urut terbaru)
+Contoh response:
+[
+  {
+    "id": 1,
+    "user": "Admin Toko",
+    "action": "login",
+    "title": "Login berhasil",
+    "detail": "Login berhasil",
+    "time": "2025-12-18 09:00:00"
+  },
+  {
+    "id": 2,
+    "user": "Kasir 1",
+    "action": "transaction",
+    "title": "Transaksi dibuat",
+    "detail": "Transaksi baru, total: Rp10000",
+    "time": "2025-12-18 09:10:00"
+  }
+]
+
+Catatan
+Tabel activity_logs hanya ada di database tenant (bukan di database utama).
+Sudah otomatis dibuat saat tenant baru dibuat (via register_client.js).
+Untuk tenant lama, jalankan SQL di atas secara manual.
+Log aktivitas otomatis tercatat di backend pada setiap aksi penting.
+
+Simulasi & Testing Upload Gambar Produk
+Endpoint
+POST /api/products/upload-image
+Headers: Authorization: Bearer {token}
+Body: form-data
+image: file gambar produk
+product_id: ID produk yang akan diupdate gambarnya
+Langkah Testing di Postman
+Login sebagai admin/owner, dapatkan token.
+Pilih method POST, URL /api/products/upload-image.
+Tambahkan header Authorization.
+Pilih body form-data, upload file gambar dan isi product_id.
+Klik Send.
+Jika sukses, response:
+
+{
+  "success": true,
+  "image_url": "uploads/tenant_1/1702730000000-nama-gambar.jpg"
+}
+
+Catatan
+Hanya owner/admin yang bisa upload gambar produk.
+Path gambar disimpan di kolom image_url pada tabel products.
+
+Arsitektur & Flow Sinkronisasi Offline-Online
+Arsitektur
+
++-------------------+         INTERNET         +-------------------+
+|   Device/Client   | <---------------------> |      Server       |
+| (Mobile/Web/PC)   |                         |   (MySQL/MariaDB) |
++-------------------+                         +-------------------+
+|  - SQLite Lokal   |                         |  - Multi-tenant   |
+|  - offline_db.sql |                         |  - kasir_tenant_X |
++-------------------+                         +-------------------+
+
+Flow Sinkronisasi
+Saat Online
+Semua transaksi, produk, dsb. langsung ke server via API.
+Saat Offline
+Semua transaksi, produk, dsb. disimpan di SQLite lokal (offline_db.sql).
+Data baru diberi flag is_synced = 0.
+Saat Koneksi Kembali
+Aplikasi cek data is_synced = 0 di SQLite.
+Kirim data ke server via API.
+Jika sukses, update flag jadi is_synced = 1
+
+Catatan
+Database offline (SQLite) hanya ada di device user, tidak dibuat otomatis oleh backend.
+register_client.js hanya membuat database tenant di server (MySQL).
+Struktur tabel di SQLite sebaiknya mirip dengan MySQL agar sinkronisasi mudah.
+Data offline di device harus diamankan (enkripsi, proteksi device).
+Jika ada perubahan data yang sama di beberapa device saat offline, perlu strategi merge/resolve saat sinkronisasi.
+Sinkronisasi Offline-Online (Client)
+Setiap device/user memiliki file SQLite sendiri (offline_db.db), disimpan di device (bukan di server).
+Data transaksi/produk baru disimpan ke SQLite saat offline.
+Saat online, aplikasi akan:
+Membaca data yang belum sinkron (is_synced = 0)
+Mengirim data ke server via API
+Jika sukses, update flag is_synced = 1
+File SQLite tidak pernah diupload ke server. Hanya data baru yang dikirim via API.
+
+Penempatan file:
+Android/iOS: folder aplikasi (otomatis oleh library SQLite)
+Desktop: folder user (misal, AppData/Roaming/YourApp)
+Web: IndexedDB (bukan file fisik)

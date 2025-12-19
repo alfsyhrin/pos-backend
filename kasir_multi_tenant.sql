@@ -138,7 +138,8 @@ CREATE TABLE `stores` (
   `phone` varchar(20) DEFAULT NULL,
   `receipt_template` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime NOT NULL DEFAULT current_timestamp()
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `tax_percentage` decimal(5,2) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -207,7 +208,10 @@ CREATE TABLE `transactions` (
   `customer_phone` varchar(15) DEFAULT NULL,
   `payment_status` varchar(50) DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `tax` DECIMAL(12,2) DEFAULT 0,
+  `tax_percentage` DECIMAL(5,2) DEFAULT 0
+  -- grand_total bisa ditambah jika ingin simpan, atau cukup dikalkulasi saat query
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

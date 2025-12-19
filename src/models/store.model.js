@@ -78,7 +78,7 @@ const StoreModel = {
     }
     const fields = [];
     const params = [];
-    ['name','address','phone','receipt_template'].forEach(k => {
+    ['name','address','phone','receipt_template','tax_percentage'].forEach(k => {
       if (updateData[k] !== undefined) {
         fields.push(`${k} = ?`);
         params.push(updateData[k] || null);
@@ -120,6 +120,36 @@ const StoreModel = {
       [ownerId, `%${term}%`, `%${term}%`, `%${term}%`]
     );
     return rows;
+  },
+
+  // Additional methods
+  async getStoreById(conn, storeId) {
+    const [rows] = await conn.execute(
+      'SELECT id, owner_id, name, address, phone, receipt_template, tax_percentage, created_at, updated_at FROM stores WHERE id = ?',
+      [storeId]
+    );
+    return rows[0];
+  },
+
+  async updateStore(conn, storeId, data) {
+    const { name, address, phone, receipt_template, tax_percentage } = data;
+
+    // Pastikan tax_percentage tidak undefined
+    const taxValue = (typeof tax_percentage === 'number' && !isNaN(tax_percentage))
+      ? tax_percentage
+      : (tax_percentage ? Number(tax_percentage) : 0);
+
+    await conn.execute(
+      'UPDATE stores SET name=?, address=?, phone=?, receipt_template=?, tax_percentage=? WHERE id=?',
+      [
+        name,
+        address ?? null,
+        phone ?? null,
+        receipt_template ?? null,
+        taxValue,
+        storeId
+      ]
+    );
   }
 };
 
