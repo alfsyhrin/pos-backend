@@ -30,7 +30,7 @@ const getTenantConnection = async (dbName) => {
 const withTenantConnection = async (dbName, fn) => {
     const conn = await getTenantConnection(dbName);
     try {
-        return await fn(conn);
+        return await fn(conn);5
     } finally {
         await conn.end();
     }
@@ -44,3 +44,9 @@ module.exports = pool;
 module.exports.getTenantConnection = getTenantConnection;
 module.exports.withTenantConnection = withTenantConnection;
 module.exports.getMainConnection = getMainConnection;
+
+// Untuk koneksi dari pool (getMainConnection)
+if (conn) conn.release();
+
+// Untuk koneksi tenant (getTenantConnection)
+if (conn) await conn.end();
