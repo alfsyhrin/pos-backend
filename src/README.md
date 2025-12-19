@@ -1113,3 +1113,96 @@ Penempatan file:
 Android/iOS: folder aplikasi (otomatis oleh library SQLite)
 Desktop: folder user (misal, AppData/Roaming/YourApp)
 Web: IndexedDB (bukan file fisik)
+
+Fitur Pajak Toko & Transaksi
+Penambahan Kolom Pajak
+Tabel stores
+Tambahkan kolom:
+
+tax_percentage (DECIMAL, default 0)
+Menyimpan persentase pajak toko/bisnis yang akan diterapkan pada setiap transaksi.
+Tabel transactions
+Tambahkan kolom:
+
+tax (DECIMAL, default 0)
+Menyimpan nominal pajak pada transaksi tersebut.
+tax_percentage (DECIMAL, default 0)
+Menyimpan persentase pajak yang digunakan pada transaksi (agar histori tetap valid jika pengaturan pajak toko berubah).
+grand_total (opsional, bisa dikalkulasi di backend/frontend)
+Total akhir transaksi setelah pajak dan diskon.
+Contoh SQL:
+
+ALTER TABLE stores ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN tax DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 0;
+
+API Terkait Pajak
+Get/Update Info Toko (Pajak)
+
+GET /api/stores/:id
+Response akan mengandung field tax_percentage.
+PUT /api/stores/:id
+Body dapat mengandung field tax_percentage untuk mengubah persentase pajak toko.
+
+Create Transaction (Dengan Pajak)
+POST /api/stores/:store_id/transactions
+Backend akan otomatis mengambil tax_percentage dari tabel stores, menghitung nominal pajak (tax), dan menyimpan kedua nilai tersebut di tabel transactions.
+Response transaksi akan mengandung field:
+tax
+tax_percentage
+grand_total
+
+Get Transaction
+GET /api/stores/:store_id/transactions/:id
+Response akan mengandung field pajak (tax, tax_percentage, grand_total).
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "total": 100000,
+    "tax_percentage": 10,
+    "tax": 10000,
+    "grand_total": 110000,
+    "created_at": "2025-12-19T10:00:00Z",
+    ...
+  }
+}
+
+Catatan Implementasi
+Frontend:
+Tampilkan dan izinkan edit tax_percentage di halaman pengaturan toko/bisnis.
+Saat menampilkan detail transaksi, tampilkan juga nominal pajak dan total akhir.
+Backend:
+Pastikan field baru (tax_percentage, tax, grand_total) sudah di-handle di model, controller, dan response API.
+Jangan pernah mengirim nilai undefined ke query MySQL, gunakan angka atau null.
+
+Testing Pajak di Postman
+1. Update Pajak Toko
+Endpoint: PUT /api/stores/:id
+Body:
+{
+  "name": "Toko Beta",
+  "tax_percentage": 10
+}
+
+2. Buat Transaksi
+Endpoint: POST /api/stores/:store_id/transactions
+Body:
+{
+  "cashier_id": 2,
+  "payment_method": "cash",
+  "total": 100000,
+  "received": 120000,
+  "change_amount": 20000,
+  "items": [
+    { "product_id": 1, "quantity": 2, "price": 50000 }
+  ]
+}
+Response akan mengandung field tax, tax_percentage, dan grand_total.
+Cek Detail Transaksi
+
+Endpoint: GET /api/stores/:store_id/transactions/:id
+Pastikan field pajak muncul di response.
+Field Baru yang Perlu Diketahui
+Store: tax_percentage
+Transaction: tax, tax_percentage, grand_total

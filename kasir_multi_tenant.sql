@@ -63,7 +63,8 @@ CREATE TABLE `owners` (
   `password` varchar(255) NOT NULL,
   `package_id` int(11) DEFAULT 1,
   `package_expired_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `address` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
