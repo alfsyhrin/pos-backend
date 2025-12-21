@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { pool } = require('./config/db'); // gunakan destructure agar jelas kita pakai promise pool
+const db = require('./config/db');
+const pool = db.pool || db; // kompatibel dengan kedua bentuk export
 
 (async function init() {
   try {
-    // contoh cek koneksi DB (promise API)
-    const [rows] = await pool.query('SELECT 1 AS ok');
+    // contoh cek koneksi DB (promise API) - gunakan execute bukan query untuk konsistensi
+    const [rows] = await pool.execute('SELECT 1 AS ok');
     console.log('DB CONNECTED', rows);
   } catch (err) {
     console.error('DB ERROR', err);
