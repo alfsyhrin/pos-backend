@@ -1,19 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const db = require('./config/db');
-const pool = db.pool || db; // kompatibel dengan kedua bentuk export
 
-(async function init() {
-  try {
-    // contoh cek koneksi DB (promise API) - gunakan execute bukan query untuk konsistensi
-    const [rows] = await pool.execute('SELECT 1 AS ok');
-    console.log('DB CONNECTED', rows);
-  } catch (err) {
-    console.error('DB ERROR', err);
-    process.exit(1);
-  }
-})();
+const pool = require('./config/db');
+pool.query('SELECT 1')
+  .then(() => console.log('✅ DB CONNECTED'))
+  .catch(err => console.error('❌ DB ERROR', err));
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
