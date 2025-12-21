@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db');
 const response = require('../utils/response'); // Pastikan jalur relatifnya benar
 
 function cleanNullFields(obj) {
@@ -23,6 +23,18 @@ function isConn(obj) {
 }
 
 const ProductModel = {
+  // Tambahkan method findById yang dipanggil dari controller transaksi
+  async findById(connOrId, maybeId, maybeStoreId) {
+    const db = isConn(connOrId) ? connOrId : pool;
+    const id = isConn(connOrId) ? maybeId : connOrId;
+    const storeId = isConn(connOrId) ? maybeStoreId : maybeId;
+    if (!id) return null;
+    const query = 'SELECT * FROM products WHERE id = ? AND store_id = ?';
+    const params = [id, storeId];
+    const [rows] = await db.execute(query, params);
+    return rows[0] || null;
+  },
+
   // Create new product (supports create(conn, productData) or create(productData))
   async create(connOrData, maybeData) {
     const { db, args: data } = resolveDbAndArgs(connOrData, maybeData);
