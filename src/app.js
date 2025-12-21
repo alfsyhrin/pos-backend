@@ -1,11 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { pool } = require('./config/db'); // gunakan destructure agar jelas kita pakai promise pool
 
-const pool = require('./config/db');
-pool.query('SELECT 1')
-  .then(() => console.log('✅ DB CONNECTED'))
-  .catch(err => console.error('❌ DB ERROR', err));
+(async function init() {
+  try {
+    // contoh cek koneksi DB (promise API)
+    const [rows] = await pool.query('SELECT 1 AS ok');
+    console.log('DB CONNECTED', rows);
+  } catch (err) {
+    console.error('DB ERROR', err);
+    process.exit(1);
+  }
+})();
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
