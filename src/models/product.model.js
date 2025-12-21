@@ -69,15 +69,15 @@ const ProductModel = {
 
     // PATCH: pastikan limit dan offset selalu angka valid
     let limit = 20;
-    if (filters.limit && !isNaN(parseInt(filters.limit))) {
-      limit = parseInt(filters.limit, 10);
+    if (filters.limit !== undefined && !isNaN(Number(filters.limit))) {
+      limit = Number(filters.limit);
     }
     query += ` LIMIT ?`;
     params.push(limit);
 
-    if (filters.offset && !isNaN(parseInt(filters.offset))) {
+    if (filters.offset !== undefined && !isNaN(Number(filters.offset))) {
       query += ` OFFSET ?`;
-      params.push(parseInt(filters.offset, 10));
+      params.push(Number(filters.offset));
     }
 
     const [rows] = await db.execute(query, params);
