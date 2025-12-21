@@ -440,8 +440,15 @@ const ProductController = {
       if (q) filters.search = q;
       if (category) filters.category = category;
       if (sku) filters.sku = sku;
-      filters.limit = parseInt(limit, 10);
-      filters.offset = parseInt(offset, 10);
+
+      // PATCH: pastikan limit dan offset selalu angka valid
+      let limitVal = parseInt(limit, 10);
+      if (isNaN(limitVal) || limitVal <= 0) limitVal = 20;
+      let offsetVal = parseInt(offset, 10);
+      if (isNaN(offsetVal) || offsetVal < 0) offsetVal = 0;
+
+      filters.limit = limitVal;
+      filters.offset = offsetVal;
 
       const products = await ProductModel.findAllByStore(conn, store_id, filters);
 

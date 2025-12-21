@@ -69,13 +69,13 @@ const ProductModel = {
 
     // PATCH: pastikan limit dan offset selalu angka valid
     let limit = 20;
-    if (filters.limit !== undefined && !isNaN(Number(filters.limit))) {
+    if (filters.limit !== undefined && !isNaN(Number(filters.limit)) && Number(filters.limit) > 0) {
       limit = Number(filters.limit);
     }
     query += ` LIMIT ?`;
     params.push(limit);
 
-    if (filters.offset !== undefined && !isNaN(Number(filters.offset))) {
+    if (filters.offset !== undefined && !isNaN(Number(filters.offset)) && Number(filters.offset) >= 0) {
       query += ` OFFSET ?`;
       params.push(Number(filters.offset));
     }
