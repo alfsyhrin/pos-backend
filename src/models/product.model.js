@@ -80,6 +80,9 @@ const ProductModel = {
       params.push(Number(filters.offset));
     }
 
+    // PATCH: jika offset tidak valid, JANGAN tambahkan OFFSET ke query!
+    // (Sudah di-handle di atas, jadi tidak perlu else)
+
     const [rows] = await db.execute(query, params);
     return rows;
   },
