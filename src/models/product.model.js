@@ -67,7 +67,7 @@ const ProductModel = {
       params.push(filters.sku);
     }
 
-    // PATCH: pastikan limit dan offset selalu angka valid
+    // PATCH: pastikan limit dan offset SELALU angka valid
     let limit = 20;
     if (filters.limit !== undefined && !isNaN(Number(filters.limit)) && Number(filters.limit) > 0) {
       limit = Number(filters.limit);
@@ -75,6 +75,7 @@ const ProductModel = {
     query += ` LIMIT ?`;
     params.push(limit);
 
+    // Tambahkan OFFSET hanya jika offset valid
     if (filters.offset !== undefined && !isNaN(Number(filters.offset)) && Number(filters.offset) >= 0) {
       query += ` OFFSET ?`;
       params.push(Number(filters.offset));
