@@ -130,7 +130,50 @@ const AuthController = {
 
   async testProtected(req, res) {
     res.json({ success: true, message: 'Akses endpoint protected berhasil', user: req.user });
+  },
+
+  // ==================== TAMBAHKAN METHOD LOGOUT ====================
+  async logout(req, res) {
+    try {
+      const user = req.user;
+      
+      // Log aktivitas logout ke database tenant
+      if (user.db_name) {
+        let tenantConn;
+        try {
+          tenantConn = await getTenantConnection(user.db_name);
+          await ActivityLogModel.create(tenantConn, {
+            user_id: user.id,
+            store_id: user.store_id,
+            action: 'logout',
+            detail: 'User logout dari sistem'
+          });
+        } catch (logError) {
+          console.error('Gagal mencatat aktivitas logout:', logError);
+          // Lanjutkan proses logout meskipun log gagal
+        } finally {
+          if (tenantConn) await tenantConn.end();
+        }
+      }
+      
+      // Catat juga di log server
+      console.log(`User ${user.username} (ID: ${user.id}, Role: ${user.role}) logout pada ${new Date().toISOString()}`);
+      
+      res.json({ 
+        success: true, 
+        message: 'Logout berhasil',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Terjadi kesalahan saat logout',
+        error: error.message 
+      });
+    }
   }
+  // ==================== END OF LOGOUT METHOD ====================
 };
 
 module.exports = AuthController;

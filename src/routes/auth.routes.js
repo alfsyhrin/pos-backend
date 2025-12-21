@@ -9,6 +9,7 @@ router.post('/login', AuthController.login);
 // Protected routes (need token)
 router.get('/profile', authMiddleware(), AuthController.getProfile);
 router.get('/test-protected', authMiddleware(), AuthController.testProtected);
+router.post('/logout', authMiddleware(), AuthController.logout); // <-- TAMBAHKAN INI
 
 // Role-based protected routes
 router.get('/admin-only', authMiddleware(['owner', 'admin']), (req, res) => {
