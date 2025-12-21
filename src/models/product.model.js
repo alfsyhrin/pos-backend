@@ -66,16 +66,20 @@ const ProductModel = {
       query += ` AND sku = ?`;
       params.push(filters.sku);
     }
-    if (filters.limit) {
-      query += ` LIMIT ?`;
-      params.push(filters.limit);
-      if (filters.offset) {
-        query += ` OFFSET ?`;
-        params.push(filters.offset);
-      }
-    } else {
-      query += ` LIMIT 20`;
+
+    // PATCH: pastikan limit dan offset selalu angka valid
+    let limit = 20;
+    if (filters.limit && !isNaN(parseInt(filters.limit))) {
+      limit = parseInt(filters.limit, 10);
     }
+    query += ` LIMIT ?`;
+    params.push(limit);
+
+    if (filters.offset && !isNaN(parseInt(filters.offset))) {
+      query += ` OFFSET ?`;
+      params.push(parseInt(filters.offset, 10));
+    }
+
     const [rows] = await db.execute(query, params);
     return rows;
   },
