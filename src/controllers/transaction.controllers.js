@@ -32,10 +32,16 @@ const TransactionController = {
             const { store_id } = req.params;
             const { user_id, total_cost, payment_type, payment_method, received_amount, change_amount, items } = req.body;
             const dbName = req.user.db_name;
-            const userId = req.user.id;
             const userStoreId = req.user.store_id;
 
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+            if (!Array.isArray(items) || items.length === 0) {
+                return response.badRequest(res, 'Items transaksi tidak boleh kosong');
+            }
+            const userId = user_id || req.user.id;
+            if (!userId) {
+                return response.badRequest(res, 'user_id tidak boleh kosong');
+            }
 
             // Verifikasi akses toko
             if (userStoreId && parseInt(userStoreId) !== parseInt(store_id)) {
@@ -154,6 +160,7 @@ const TransactionController = {
                 throw errTx;
             }
         } catch (error) {
+            console.error('CREATE TRANSACTION ERROR:', error); // PATCH: log error detail
             return response.error(res, 'Error creating transaction', 500, error);
         } finally {
             if (conn) await conn.end();
