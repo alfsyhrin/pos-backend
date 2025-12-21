@@ -429,28 +429,16 @@ const ProductController = {
     let conn;
     try {
       const { store_id } = req.params;
-      const { q, category, sku, limit = 20, offset = 0 } = req.query;
+      const { q } = req.query;
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
-
       conn = await getTenantConnection(dbName);
 
-      // Build filters
-      const filters = {};
-      if (q) filters.search = q;
-      if (category) filters.category = category;
-      if (sku) filters.sku = sku;
+      // Default limit
+      const limit = 20;
 
-      // PATCH: pastikan limit dan offset selalu angka valid
-      let limitVal = parseInt(limit, 10);
-      if (isNaN(limitVal) || limitVal <= 0) limitVal = 20;
-      let offsetVal = parseInt(offset, 10);
-      if (isNaN(offsetVal) || offsetVal < 0) offsetVal = 0;
-
-      filters.limit = limitVal;
-      filters.offset = offsetVal;
-
-      const products = await ProductModel.findAllByStore(conn, store_id, filters);
+      // Panggil model sederhana
+      const products = await ProductModel.simpleSearch(conn, store_id, q, limit);
 
       // Mapping agar cocok dengan frontend
       const mapped = products.map(product => ({
@@ -478,7 +466,7 @@ const ProductController = {
 
       return response.success(res, mapped, 'Hasil pencarian produk');
     } catch (error) {
-      console.error('Search Products Error:', error); // Tambahkan ini
+      console.error('Search Products Error:', error);
       return response.error(res, 'Terjadi kesalahan saat mencari produk', 500, error);
     } finally {
       if (conn) await conn.end();

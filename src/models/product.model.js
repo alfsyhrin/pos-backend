@@ -322,7 +322,24 @@ const ProductModel = {
     } catch (error) {
       throw error;
     }
-  }
+  },
+
+  simpleSearch: async function (conn, storeId, q, limit = 20) {
+    let query = `SELECT * FROM products WHERE store_id = ?`;
+    const params = [storeId];
+
+    if (q && q.trim() !== '') {
+      query += ` AND (name LIKE ? OR sku LIKE ? OR barcode LIKE ?)`;
+      const term = `%${q}%`;
+      params.push(term, term, term);
+    }
+
+    query += ` LIMIT ?`;
+    params.push(Number(limit));
+
+    const [rows] = await conn.execute(query, params);
+    return rows;
+  },
 };
 
 module.exports = ProductModel;
