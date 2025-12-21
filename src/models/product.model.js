@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const pool = require('../config/db');
 const response = require('../utils/response'); // Pastikan jalur relatifnya benar
 
 function cleanNullFields(obj) {

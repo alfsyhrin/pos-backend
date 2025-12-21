@@ -40,10 +40,7 @@ const getMainConnection = async () => {
     return await pool.getConnection();
 };
 
-// ganti export menjadi objek tunggal agar destructuring konsisten
-module.exports = {
-  pool,
-  getTenantConnection,
-  withTenantConnection,
-  getMainConnection
-};
+module.exports = pool;
+module.exports.getTenantConnection = getTenantConnection;
+module.exports.withTenantConnection = withTenantConnection;
+module.exports.getMainConnection = getMainConnection;
