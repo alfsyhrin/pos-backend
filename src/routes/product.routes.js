@@ -11,9 +11,6 @@ router.post('/:store_id/products', authMiddleware(['owner', 'admin']), checkTena
 // Get All Products for a Store (protected route)
 router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getAll);
 
-// Get Single Product by ID (protected route)
-router.get('/:store_id/products/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getById);
-
 // Update Product (protected route)
 router.put('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, ProductController.update);
 
@@ -23,14 +20,17 @@ router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), che
 // Get Low Stock Products (protected route)
 router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin']), checkTenant, ProductController.getLowStock);
 
-// **Add Endpoint for Statistics** (protected route)
+// Statistik produk
 router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin']), checkTenant, ProductController.getStats);
 
 // Find Product by Barcode (protected route)
 router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.findByBarcode);
 
-// Search products by name, sku, barcode, or category (protected route)
+// Search products
 router.get('/:store_id/products/search', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.search);
+
+// Get Single Product by ID (protected route) -- HARUS PALING BAWAH!
+router.get('/:store_id/products/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getById);
 
 // Endpoint upload gambar produk
 router.post('/upload-image', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.uploadProductImage);

@@ -93,7 +93,9 @@ const TransactionController = {
             }
 
             // Menghitung total transaksi
-            const taxPercentage = 0; // Implementasi perhitungan persentase pajak jika perlu
+            // PATCH: Ambil pajak dari tabel stores
+            const [storeRows] = await conn.query('SELECT tax_percentage FROM stores WHERE id = ?', [store_id]);
+            const taxPercentage = Number(storeRows[0]?.tax_percentage || 0);
             const tax = subtotal * (taxPercentage / 100);
             const grandTotal = subtotal + tax - discountTotal;
 
