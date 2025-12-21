@@ -73,6 +73,8 @@ const ProductModel = {
         query += ` OFFSET ?`;
         params.push(filters.offset);
       }
+    } else {
+      query += ` LIMIT 20`;
     }
     const [rows] = await db.execute(query, params);
     return rows;

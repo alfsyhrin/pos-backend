@@ -471,6 +471,7 @@ const ProductController = {
 
       return response.success(res, mapped, 'Hasil pencarian produk');
     } catch (error) {
+      console.error('Search Products Error:', error); // Tambahkan ini
       return response.error(res, 'Terjadi kesalahan saat mencari produk', 500, error);
     } finally {
       if (conn) await conn.end();
