@@ -429,18 +429,14 @@ const ProductController = {
     let conn;
     try {
       const { store_id } = req.params;
-      const { q } = req.query;
-      const dbName = req.user.db_name;
+      const q = (req.query.q || req.query.query || '').toString();
+      const dbName = req.user && req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
       conn = await getTenantConnection(dbName);
 
-      // Default limit
-      const limit = 20;
-
-      // Panggil model sederhana
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
       const products = await ProductModel.simpleSearch(conn, store_id, q, limit);
 
-      // Mapping agar cocok dengan frontend
       const mapped = products.map(product => ({
         id: product.id,
         name: product.name,

@@ -67,22 +67,17 @@ const ProductModel = {
       params.push(filters.sku);
     }
 
-    // PATCH: pastikan limit dan offset SELALU angka valid
+    // VALIDATE limit/offset sebagai angka, lalu masukkan langsung ke SQL (bukan sebagai placeholder)
     let limit = 20;
-    if (filters.limit !== undefined && !isNaN(Number(filters.limit)) && Number(filters.limit) > 0) {
-      limit = Number(filters.limit);
+    if (filters.limit !== undefined && Number.isFinite(Number(filters.limit)) && Number(filters.limit) > 0) {
+      limit = Math.floor(Number(filters.limit));
     }
-    query += ` LIMIT ?`;
-    params.push(limit);
+    query += ` LIMIT ${limit}`;
 
-    // Tambahkan OFFSET hanya jika offset valid
-    if (filters.offset !== undefined && !isNaN(Number(filters.offset)) && Number(filters.offset) >= 0) {
-      query += ` OFFSET ?`;
-      params.push(Number(filters.offset));
+    if (filters.offset !== undefined && Number.isFinite(Number(filters.offset)) && Number(filters.offset) >= 0) {
+      const offset = Math.floor(Number(filters.offset));
+      query += ` OFFSET ${offset}`;
     }
-
-    // PATCH: jika offset tidak valid, JANGAN tambahkan OFFSET ke query!
-    // (Sudah di-handle di atas, jadi tidak perlu else)
 
     const [rows] = await db.execute(query, params);
     return rows;
@@ -194,11 +189,13 @@ const ProductModel = {
     const storeId = hasConn ? maybeStoreId : connOrStoreId;
     const term = hasConn ? searchTerm : maybeStoreId;
     const lim = hasConn ? limit : searchTerm || 20;
+
+    // validate limit dan masukkan langsung
+    const limVal = (lim !== undefined && Number.isFinite(Number(lim)) && Number(lim) > 0) ? Math.floor(Number(lim)) : 20;
+
     try {
-      const [rows] = await db.execute(
-        `SELECT * FROM products WHERE store_id = ? AND (name LIKE ? OR sku LIKE ?) AND is_active = 1 ORDER BY name LIMIT ?`,
-        [storeId, `%${term}%`, `%${term}%`, parseInt(lim, 10)]
-      );
+      const sql = `SELECT * FROM products WHERE store_id = ? AND (name LIKE ? OR sku LIKE ?) AND is_active = 1 ORDER BY name LIMIT ${limVal}`;
+      const [rows] = await db.execute(sql, [storeId, `%${term}%`, `%${term}%`]);
       return rows;
     } catch (error) {
       throw error;
@@ -334,8 +331,8 @@ const ProductModel = {
       params.push(term, term, term);
     }
 
-    query += ` LIMIT ?`;
-    params.push(Number(limit));
+    const lim = (limit !== undefined && Number.isFinite(Number(limit)) && Number(limit) > 0) ? Math.floor(Number(limit)) : 20;
+    query += ` LIMIT ${lim}`;
 
     const [rows] = await conn.execute(query, params);
     return rows;
