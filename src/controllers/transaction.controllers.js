@@ -3,6 +3,7 @@ const ProductModel = require('../models/product.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
+const { pool: MainPool } = require('../config/db'); // pastikan pool utama diekspor dari config/db.js
 
 function mapTransactionToFrontend(tx, items = []) {
   return {
@@ -32,7 +33,6 @@ const TransactionController = {
             const { store_id } = req.params;
             const { user_id, total_cost, payment_type, payment_method, received_amount, change_amount, items } = req.body;
             const dbName = req.user.db_name;
-            const userId = req.user.id;
             const userStoreId = req.user.store_id;
 
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
@@ -43,6 +43,27 @@ const TransactionController = {
             }
 
             conn = await getTenantConnection(dbName);
+
+            // --- PATCH: Validasi user_id/cashier_id (bisa user tenant atau owner utama) ---
+            let role = 'cashier';
+            let is_owner = false;
+
+            // 1. Cek di user tenant
+            const [userRows] = await conn.execute('SELECT * FROM users WHERE id = ?', [user_id]);
+            if (userRows.length > 0) {
+                role = userRows[0].role || 'cashier';
+            } else {
+                // 2. Cek di owner utama
+                const [ownerRows] = await MainPool.execute('SELECT * FROM owners WHERE id = ?', [user_id]);
+                if (ownerRows.length > 0) {
+                    // (opsional) cek apakah owner ini memang punya akses ke store_id
+                    role = 'owner';
+                    is_owner = true;
+                } else {
+                    return response.badRequest(res, 'Kasir/Owner tidak ditemukan', 404);
+                }
+            }
+            // --- END PATCH ---
 
             // Verifikasi item transaksi
             let subtotal = 0;
@@ -93,7 +114,6 @@ const TransactionController = {
             }
 
             // Menghitung total transaksi
-            // PATCH: Ambil pajak dari tabel stores
             const [storeRows] = await conn.query('SELECT tax_percentage FROM stores WHERE id = ?', [store_id]);
             const taxPercentage = Number(storeRows[0]?.tax_percentage || 0);
             const tax = subtotal * (taxPercentage / 100);
@@ -109,7 +129,7 @@ const TransactionController = {
             // Membuat objek transaksi
             const transaction = {
                 store_id,
-                user_id: userId,
+                user_id,
                 total_cost: grandTotal,
                 payment_type,
                 payment_method,
@@ -121,7 +141,9 @@ const TransactionController = {
                 discount_total: discountTotal,
                 grand_total: grandTotal,
                 tax,
-                tax_percentage: taxPercentage
+                tax_percentage: taxPercentage,
+                role,       // PATCH: simpan role
+                is_owner    // PATCH: simpan is_owner
             };
 
             // Simpan transaksi dan item dalam transaksi
@@ -138,14 +160,14 @@ const TransactionController = {
                 await conn.commit();
                 const txId = transactionId;
                 const txRow = await TransactionModel.findById(conn, txId, store_id);
-                const mapped = mapTransactionToFrontend(txRow, processedItems);
+                const mapped = mapTransactionToFrontend({ ...txRow, role, is_owner }, processedItems);
 
                 // Setelah transaksi berhasil
                 await ActivityLogModel.create(conn, {
                   user_id: req.user.id,
                   store_id: req.params.store_id,
                   action: 'transaction',
-                  detail: `Transaksi baru, total: Rp${total_cost}`
+                  detail: `Transaksi baru, total: Rp${total_cost}, role: ${role}`
                 });
 
                 return response.created(res, mapped, 'Transaction created successfully');
