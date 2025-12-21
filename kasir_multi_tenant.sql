@@ -211,7 +211,9 @@ CREATE TABLE `transactions` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `tax` DECIMAL(12,2) DEFAULT 0,
-  `tax_percentage` DECIMAL(5,2) DEFAULT 0
+  `tax_percentage` DECIMAL(5,2) DEFAULT 0,
+  `role` VARCHAR(20),
+  `is_owner` BOOLEAN,
   -- grand_total bisa ditambah jika ingin simpan, atau cukup dikalkulasi saat query
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

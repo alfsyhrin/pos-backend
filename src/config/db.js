@@ -40,7 +40,9 @@ const getMainConnection = async () => {
     return await pool.getConnection();
 };
 
+// existing default export (keep for existing `const pool = require('../config/db')` usage)
 module.exports = pool;
+module.exports.pool = pool;                     // <-- tambahkan ini
 module.exports.getTenantConnection = getTenantConnection;
 module.exports.withTenantConnection = withTenantConnection;
 module.exports.getMainConnection = getMainConnection;
