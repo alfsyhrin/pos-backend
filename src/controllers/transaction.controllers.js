@@ -3,7 +3,7 @@ const ProductModel = require('../models/product.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
-const { pool: MainPool } = require('../config/db'); // pastikan pool utama diekspor dari config/db.js
+const { pool } = require('../config/db');
 
 function mapTransactionToFrontend(tx, items = []) {
   return {

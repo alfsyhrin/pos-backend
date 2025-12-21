@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db');
 
 function isConn(obj) {
   return obj && typeof obj.execute === 'function';

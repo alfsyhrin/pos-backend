@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { pool } = require('./config/db');
 const bcrypt = require('bcryptjs');
 
 const UserModel = {
@@ -14,7 +14,7 @@ const UserModel = {
     // Find user by email (for owner login, database utama)
     async findOwnerByEmail(email) {
         // Tetap pakai pool global, karena owner login ke db utama
-        const pool = require('../config/db');
+        const pool = require('./config/db');
         const [rows] = await pool.execute(
             'SELECT * FROM users WHERE email = ? AND role = "owner"',
             [email]

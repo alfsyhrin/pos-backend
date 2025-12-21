@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { getTenantConnection } = require('../config/db');
 const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 const response = require('../utils/response');
+const { pool } = require('../config/db');
 
 // const USER_LIMITS = {
 //   'Standard': 1,
@@ -88,7 +89,6 @@ const UserController = {
             }
 
             // ambil plan
-            const pool = require('../config/db');
             const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [owner_id]);
             const plan = subs[0]?.plan || 'Standard';
 
