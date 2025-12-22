@@ -29,20 +29,26 @@ const UserModel = {
     },
 
     // List user by store (tenant)
-    async findByStore(conn, store_id) {
-        const [rows] = await conn.execute(
-            `SELECT * FROM users WHERE store_id = ? AND is_active = 1 AND role IN ('admin','cashier')`,
-            [store_id]
-        );
+    async findByStore(conn, store_id, search) {
+        let query = `SELECT * FROM users WHERE store_id = ? AND is_active = 1 AND role IN ('admin','cashier')`;
+        let params = [store_id];
+        if (search) {
+            query += ` AND (name LIKE ? OR username LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`);
+        }
+        const [rows] = await conn.execute(query, params);
         return rows;
     },
 
     // List semua user milik owner (semua toko)
-    async findAllByOwner(conn, owner_id) {
-        const [rows] = await conn.execute(
-            `SELECT * FROM users WHERE owner_id = ? AND is_active = 1 AND role IN ('admin','cashier')`,
-            [owner_id]
-        );
+    async findAllByOwner(conn, owner_id, search) {
+        let query = `SELECT * FROM users WHERE owner_id = ? AND is_active = 1 AND role IN ('admin','cashier')`;
+        let params = [owner_id];
+        if (search) {
+            query += ` AND (name LIKE ? OR username LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`);
+        }
+        const [rows] = await conn.execute(query, params);
         return rows;
     },
 
