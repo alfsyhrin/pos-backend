@@ -57,20 +57,26 @@ async function registerClient({
     console.log('Owner user already exists in main users table:', email);
   }
   
-  // 3. Buat database tenant baru
-  await conn.execute(`CREATE DATABASE ${db_name}`);
+  // 3. Cek apakah database tenant sudah ada
+  const [dbs] = await conn.query('SHOW DATABASES LIKE ?', [db_name]);
+  if (dbs.length === 0) {
+    // 3a. Buat database tenant baru
+    await conn.execute(`CREATE DATABASE ${db_name}`);
 
-  // 4. Import schema ke database tenant
-  const schemaPath = path.resolve(__dirname, 'kasir_multi_tenant.sql');
-  await new Promise((resolve, reject) => {
-    exec(
-      `mysql -u ${DB_USER} -p${DB_PASSWORD} ${db_name} < ${schemaPath}`,
-      (error, stdout, stderr) => {
-        if (error) return reject(error);
-        resolve();
-      }
-    );
-  });
+    // 4. Import schema ke database tenant
+    const schemaPath = path.resolve(__dirname, 'kasir_multi_tenant.sql');
+    await new Promise((resolve, reject) => {
+      exec(
+        `mysql -u ${DB_USER} -p${DB_PASSWORD} ${db_name} < ${schemaPath}`,
+        (error, stdout, stderr) => {
+          if (error) return reject(error);
+          resolve();
+        }
+      );
+    });
+  } else {
+    console.log(`Database ${db_name} sudah ada, skip create & import schema`);
+  }
 
   // setelah import schema berhasil, tambahkan sinkronisasi owner ke tenant
   const tenantConn = await mysql.createConnection({
