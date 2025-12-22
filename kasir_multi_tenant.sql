@@ -213,8 +213,7 @@ CREATE TABLE `transactions` (
   `tax` DECIMAL(12,2) DEFAULT 0,
   `tax_percentage` DECIMAL(5,2) DEFAULT 0,
   `role` VARCHAR(20),
-  `is_owner` BOOLEAN,
-  -- grand_total bisa ditambah jika ingin simpan, atau cukup dikalkulasi saat query
+  `is_owner` BOOLEAN
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
