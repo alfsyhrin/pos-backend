@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const UserModel = require('../models/user.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const db = require('../config/db'); // pool
-const { getTenantConnection } = require('../config/db');
+const { getTenantConnection, databaseExists } = require('../config/db'); // pastikan sudah export databaseExists
 
 const AuthController = {
   async login(req, res) {
@@ -50,6 +50,9 @@ const AuthController = {
           for (const c of clients) {
             let tmpConn;
             try {
+              // CEK DULU ADA NGGAK
+              const exists = await databaseExists(c.db_name);
+              if (!exists) continue;
               tmpConn = await getTenantConnection(c.db_name);
               const found = await UserModel.findByUsername(tmpConn, identifier);
               if (found) {
@@ -71,8 +74,11 @@ const AuthController = {
           const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [detectedOwnerId]);
           db_name = clients[0]?.db_name || null;
           if (db_name) {
-            tenantConn = await getTenantConnection(db_name);
-            user = await UserModel.findByUsername(tenantConn, identifier);
+            const exists = await databaseExists(db_name);
+            if (exists) {
+              tenantConn = await getTenantConnection(db_name);
+              user = await UserModel.findByUsername(tenantConn, identifier);
+            }
           }
         }
         userType = user?.role || 'user';
@@ -108,7 +114,16 @@ const AuthController = {
 
       // Log aktivitas login
       if (!tenantConn && db_name) {
-        tenantConn = await getTenantConnection(db_name);
+        try {
+          const exists = await databaseExists(db_name);
+          if (exists) {
+            tenantConn = await getTenantConnection(db_name);
+          } else {
+            tenantConn = null;
+          }
+        } catch (e) {
+          tenantConn = null; // Jangan error, lanjutkan saja
+        }
       }
       if (tenantConn) {
         await ActivityLogModel.create(tenantConn, {
