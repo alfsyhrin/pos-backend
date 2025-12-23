@@ -36,6 +36,7 @@ async function main() {
   }
 
   // 2. Buat 3 Admin (masing-masing 1 toko, 2 Pro, 1 Standard)
+// ...existing code...
   const admins = [
     {
       name: 'Abi 07',
@@ -49,7 +50,7 @@ async function main() {
       username: 'admin.inayah',
       email: 'inayah@gmail.com',
       password: await bcrypt.hash('Inayah112009', 10),
-      plan: 'Pro'
+      plan: 'Standard'
     },
     {
       name: 'Dflowers',
@@ -59,6 +60,7 @@ async function main() {
       plan: 'Standard'
     }
   ];
+// ...existing code...
 
   for (const admin of admins) {
     // Cek user admin
