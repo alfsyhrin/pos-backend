@@ -1,8 +1,8 @@
 const ProductModel = require('../models/product.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
-const pool = require('../config/db'); // main DB (subscriptions, clients)
-const { getTenantConnection } = require('../config/db');
+const pool = require('../config/db');
+const { getTenantConnection, databaseExists } = require('../config/db'); // pastikan import databaseExists
 const path = require('path');
 const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
@@ -35,6 +35,10 @@ const ProductController = {
       const owner_id = req.user.owner_id;
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      // CEK DULU ADA NGGAK
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
 
       conn = await getTenantConnection(dbName);
 
@@ -129,6 +133,9 @@ const ProductController = {
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
 
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
       const products = await ProductModel.findAllByStore(conn, store_id);
 
@@ -179,6 +186,10 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       const product = await ProductModel.findById(conn, productId, storeId);
@@ -214,10 +225,30 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
-      const exists = await ProductModel.existsInStore(conn, productId, storeId);
-      if (!exists) return response.notFound(res, 'Produk tidak ditemukan');
+      const product = await ProductModel.findById(conn, productId, storeId);
+      if (!product) return response.notFound(res, 'Produk tidak ditemukan');
+
+      // Validasi perubahan harga dan stok
+      if (updateData.price !== undefined && updateData.price !== product.price) {
+        const priceDiff = Math.abs(updateData.price - product.price);
+        const percentageChange = (priceDiff / product.price) * 100;
+        if (percentageChange > 10) {
+          return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
+        }
+      }
+
+      if (updateData.stock !== undefined && updateData.stock !== product.stock) {
+        const stockDiff = Math.abs(updateData.stock - product.stock);
+        if (stockDiff > 100) {
+          return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
+        }
+      }
 
       const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
       if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
@@ -254,10 +285,14 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
-      const exists = await ProductModel.existsInStore(conn, productId, storeId);
-      if (!exists) return response.notFound(res, 'Produk tidak ditemukan');
+      const product = await ProductModel.findById(conn, productId, storeId);
+      if (!product) return response.notFound(res, 'Produk tidak ditemukan');
 
       const isDeleted = await ProductModel.delete(conn, productId, storeId);
       if (!isDeleted) return response.error(res, 'Gagal menghapus produk', 400);
@@ -289,6 +324,10 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       const lowStockProducts = await ProductModel.getLowStock(conn, storeId, threshold);
@@ -316,10 +355,14 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
-      const exists = await ProductModel.existsInStore(conn, productId, storeId);
-      if (!exists) return response.notFound(res, 'Produk tidak ditemukan');
+      const existsInStore = await ProductModel.existsInStore(conn, productId, storeId);
+      if (!existsInStore) return response.notFound(res, 'Produk tidak ditemukan');
 
       const isUpdated = await ProductModel.updateStock(conn, productId, parseInt(quantity_change, 10));
       if (!isUpdated) return response.error(res, 'Gagal mengupdate stok produk', 400);
@@ -343,6 +386,10 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       const allProducts = await ProductModel.findAllByStore(conn, storeId);
@@ -380,6 +427,10 @@ const ProductController = {
       const { store_id, barcode } = req.params;
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       const product = await ProductModel.findByBarcode(conn, store_id, barcode);
@@ -401,6 +452,10 @@ const ProductController = {
 
       const dbName = req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       // --- VALIDASI LIMIT GAMBAR PRODUK ---
@@ -432,6 +487,10 @@ const ProductController = {
       const q = (req.query.q || req.query.query || '').toString();
       const dbName = req.user && req.user.db_name;
       if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+
+      const exists = await databaseExists(dbName);
+      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+
       conn = await getTenantConnection(dbName);
 
       const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
