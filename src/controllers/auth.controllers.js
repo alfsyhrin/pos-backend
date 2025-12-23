@@ -17,27 +17,35 @@ const AuthController = {
       let userType = 'user';
       let ownerIdForToken = null;
 
+      // 1. Cek di database utama dulu
       if (identifier.includes('@')) {
-        // owner login by email (unchanged)
-        user = await UserModel.findOwnerByEmail(identifier);
-        userType = 'owner';
-        if (user) {
-          const ownerIdForClient = user.owner_id || user.id;
-          const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForClient]);
+        // Owner login by email
+        const [mainUserRows] = await db.query('SELECT * FROM users WHERE email = ?', [identifier]);
+        if (mainUserRows.length > 0) {
+          user = mainUserRows[0];
+          userType = user.role;
+          ownerIdForToken = user.owner_id;
+          // Cek info tenant
+          const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForToken]);
           db_name = clients[0]?.db_name || null;
-          if (!db_name) {
-            const expectedDb = `kasir_tenant_${ownerIdForClient}`;
-            const [dbRows] = await db.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [expectedDb]);
-            if (dbRows.length) db_name = expectedDb;
-          }
-          ownerIdForToken = user.owner_id || user.id;
         }
       } else {
-        // username login (admin/kasir) — try body.owner_id first, otherwise autodetect across tenants
-        let detectedOwnerId = ownerIdFromBody || null;
+        // Admin login by username
+        const [mainUserRows] = await db.query('SELECT * FROM users WHERE username = ?', [identifier]);
+        if (mainUserRows.length > 0) {
+          user = mainUserRows[0];
+          userType = user.role;
+          ownerIdForToken = user.owner_id;
+          // Cek info tenant
+          const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [ownerIdForToken]);
+          db_name = clients[0]?.db_name || null;
+        }
+      }
 
+      // 2. Jika tidak ditemukan di main DB, scan tenant DB seperti sebelumnya
+      if (!user && !identifier.includes('@')) {
+        let detectedOwnerId = ownerIdFromBody || null;
         if (!detectedOwnerId) {
-          // scan clients to find which tenant has this username
           const [clients] = await db.query('SELECT owner_id, db_name FROM clients');
           for (const c of clients) {
             let tmpConn;
@@ -48,20 +56,17 @@ const AuthController = {
                 user = found;
                 detectedOwnerId = c.owner_id;
                 db_name = c.db_name;
-                tenantConn = tmpConn; // keep open for password check and further queries
-                tmpConn = null; // prevent double-close
+                tenantConn = tmpConn;
+                tmpConn = null;
                 break;
               }
             } catch (err) {
-              // skip tenant on error, continue scanning
               console.warn(`tenant scan failed for ${c.db_name}: ${err.message}`);
             } finally {
               if (tmpConn) await tmpConn.end();
             }
           }
         }
-
-        // if still not found but owner_id provided, use that
         if (!user && detectedOwnerId) {
           const [clients] = await db.query('SELECT db_name FROM clients WHERE owner_id = ?', [detectedOwnerId]);
           db_name = clients[0]?.db_name || null;
@@ -70,39 +75,38 @@ const AuthController = {
             user = await UserModel.findByUsername(tenantConn, identifier);
           }
         }
-
-        if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-
-        userType = user.role || 'user';
-        ownerIdForToken = detectedOwnerId || user.owner_id || null;
+        userType = user?.role || 'user';
+        ownerIdForToken = detectedOwnerId || user?.owner_id || null;
       }
 
-      // password check (same as before)
+      if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
+
+      // password check
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
       // Ambil plan dari user, atau dari tabel subscriptions jika perlu
       let plan = user.plan;
       if (!plan && ownerIdForToken) {
-          const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ? AND status = "Aktif" ORDER BY end_date DESC LIMIT 1', [ownerIdForToken]);
-          plan = subs[0]?.plan || 'Standard';
+        const [subs] = await db.query('SELECT plan FROM subscriptions WHERE owner_id = ? AND status = "Aktif" ORDER BY end_date DESC LIMIT 1', [ownerIdForToken]);
+        plan = subs[0]?.plan || 'Standard';
       }
 
       const payload = {
-          id: user.id,
-          owner_id: ownerIdForToken,
-          store_id: user.store_id || null,
-          role: user.role || userType,
-          username: user.username || user.email,
-          name: user.name || user.business_name,
-          email: user.email || null,
-          db_name,
-          plan
+        id: user.id,
+        owner_id: ownerIdForToken,
+        store_id: user.store_id || null,
+        role: user.role || userType,
+        username: user.username || user.email,
+        name: user.name || user.business_name,
+        email: user.email || null,
+        db_name,
+        plan
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
-      // PATCH: pastikan tenantConn selalu ada sebelum log aktivitas
+      // Log aktivitas login
       if (!tenantConn && db_name) {
         tenantConn = await getTenantConnection(db_name);
       }
