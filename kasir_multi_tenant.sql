@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
 CREATE TABLE `clients` (
   `id` int(11) NOT NULL,
   `owner_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `db_name` varchar(100) DEFAULT NULL,
   `db_user` varchar(100) DEFAULT NULL,
   `db_password` varchar(100) DEFAULT NULL,
@@ -183,6 +184,7 @@ CREATE TABLE `struck_receipt` (
 CREATE TABLE `subscriptions` (
   `id` int(11) NOT NULL,
   `owner_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `status` enum('Aktif','Nonaktif') NOT NULL DEFAULT 'Nonaktif',
   `plan` enum('Pro','Standard','Eksklusif') NOT NULL DEFAULT 'Standard',
   `start_date` datetime NOT NULL,
