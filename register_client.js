@@ -81,26 +81,17 @@ async function registerClient({
   });
 
   try {
-    // pastikan ada row owners di tenant
+    // pastikan ada row owners di tenant (sesuaikan dengan schema: business_name)
     const [ownerRows] = await tenantConn.query('SELECT id FROM owners WHERE id = ?', [owner_id]);
     if (ownerRows.length === 0) {
       try {
         await tenantConn.execute(
-          'INSERT INTO owners (id, name, email, created_at) VALUES (?, ?, ?, NOW())',
-          [owner_id, business_name, email]
+          'INSERT INTO owners (id, business_name, email, phone, password, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+          [owner_id, business_name, email, phone, hashedPassword]
         );
         console.log('Owner row inserted into tenant owners table:', db_name);
       } catch (err) {
-        console.warn('Insert into tenant owners (id,name,email) failed, trying alternative columns:', err.message);
-        try {
-          await tenantConn.execute(
-            'INSERT INTO owners (id, business_name, email, phone, password, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [owner_id, business_name, email, phone, hashedPassword]
-          );
-          console.log('Owner row inserted into tenant owners table (alternative columns):', db_name);
-        } catch (err2) {
-          console.error('Failed to insert owner into tenant owners table:', err2.message);
-        }
+        console.error('Failed to insert owner into tenant owners table:', err.message);
       }
     } else {
       console.log('Owner already exists in tenant owners table:', db_name);
