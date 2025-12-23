@@ -40,7 +40,18 @@ const getMainConnection = async () => {
     return await pool.getConnection();
 };
 
+const databaseExists = async (dbName) => {
+    const conn = await pool.getConnection();
+    try {
+        const [rows] = await conn.query('SHOW DATABASES LIKE ?', [dbName]);
+        return rows.length > 0;
+    } finally {
+        conn.release();
+    }
+};
+
 module.exports = pool;
 module.exports.getTenantConnection = getTenantConnection;
 module.exports.withTenantConnection = withTenantConnection;
 module.exports.getMainConnection = getMainConnection;
+module.exports.databaseExists = databaseExists;
