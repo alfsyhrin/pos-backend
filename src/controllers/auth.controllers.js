@@ -33,7 +33,7 @@ const AuthController = {
           ownerIdForToken = user.owner_id || user.id;
         }
       } else {
-        // username login (admin/kasir)
+        // username login (admin/kasir) — try body.owner_id first, otherwise autodetect across tenants
         let detectedOwnerId = ownerIdFromBody || null;
 
         if (!detectedOwnerId) {
@@ -53,6 +53,7 @@ const AuthController = {
                 break;
               }
             } catch (err) {
+              // skip tenant on error, continue scanning
               console.warn(`tenant scan failed for ${c.db_name}: ${err.message}`);
             } finally {
               if (tmpConn) await tmpConn.end();
@@ -70,29 +71,15 @@ const AuthController = {
           }
         }
 
-        // If user still null, return error
-        if (!user) {
-          console.error('User not found for username:', identifier);
-          return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-        }
+        if (!user) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
         userType = user.role || 'user';
         ownerIdForToken = detectedOwnerId || user.owner_id || null;
       }
 
-      // ========== TAMBAHKAN CHECK INI ==========
-      // Check if user is still null (for email login case)
-      if (!user) {
-        console.error('User not found for identifier:', identifier);
-        return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-      }
-
-      // password check
+      // password check (same as before)
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        console.error('Invalid password for user:', identifier);
-        return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
-      }
+      if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
 
       // Ambil plan dari user, atau dari tabel subscriptions jika perlu
       let plan = user.plan;
@@ -145,10 +132,12 @@ const AuthController = {
     res.json({ success: true, message: 'Akses endpoint protected berhasil', user: req.user });
   },
 
+  // ==================== TAMBAHKAN METHOD LOGOUT ====================
   async logout(req, res) {
     try {
       const user = req.user;
       
+      // Log aktivitas logout ke database tenant
       if (user.db_name) {
         let tenantConn;
         try {
@@ -161,11 +150,13 @@ const AuthController = {
           });
         } catch (logError) {
           console.error('Gagal mencatat aktivitas logout:', logError);
+          // Lanjutkan proses logout meskipun log gagal
         } finally {
           if (tenantConn) await tenantConn.end();
         }
       }
       
+      // Catat juga di log server
       console.log(`User ${user.username} (ID: ${user.id}, Role: ${user.role}) logout pada ${new Date().toISOString()}`);
       
       res.json({ 
@@ -182,6 +173,7 @@ const AuthController = {
       });
     }
   }
+  // ==================== END OF LOGOUT METHOD ====================
 };
 
 module.exports = AuthController;
