@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const UserModel = require('../models/user.model');
 const ActivityLogModel = require('../models/activityLog.model');
-const db = require('../config/db'); // pool
-const { getTenantConnection, databaseExists } = require('../config/db'); // pastikan sudah export databaseExists
+const db = require('../config/db');
+const { getTenantConnection, databaseExists } = require('../config/db');
 
 const AuthController = {
   async login(req, res) {
@@ -98,6 +98,29 @@ const AuthController = {
         plan = subs[0]?.plan || 'Standard';
       }
 
+      // --- PENYESUAIAN: Ambil data bisnis/toko sesuai role ---
+      let business_name = null;
+      let store_name = null;
+      if (user.role === 'owner' && ownerIdForToken) {
+        const [owners] = await db.query('SELECT business_name, email FROM owners WHERE id = ?', [ownerIdForToken]);
+        if (owners.length > 0) {
+          business_name = owners[0].business_name;
+          user.email = owners[0].email; // pastikan email owner konsisten
+        }
+      }
+      if ((user.role === 'admin' || user.role === 'cashier') && user.store_id && db_name) {
+        try {
+          const exists = await databaseExists(db_name);
+          if (exists) {
+            tenantConn = await getTenantConnection(db_name);
+            const [stores] = await tenantConn.query('SELECT name FROM stores WHERE id = ?', [user.store_id]);
+            if (stores.length > 0) store_name = stores[0].name;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // --- END PENYESUAIAN ---
+
       const payload = {
         id: user.id,
         owner_id: ownerIdForToken,
@@ -107,7 +130,9 @@ const AuthController = {
         name: user.name || user.business_name,
         email: user.email || null,
         db_name,
-        plan
+        plan,
+        business_name, // untuk owner
+        store_name     // untuk admin/kasir
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
@@ -144,7 +169,63 @@ const AuthController = {
   },
 
   async getProfile(req, res) {
-    res.json({ success: true, message: 'Profil user', user: req.user });
+    let user = req.user;
+    let business_name = user.business_name || null;
+    let store_name = user.store_name || null;
+
+    // Ambil business_name jika owner
+    if (user.role === 'owner' && user.owner_id) {
+      const [owners] = await db.query('SELECT business_name, email FROM owners WHERE id = ?', [user.owner_id]);
+      if (owners.length > 0) {
+        business_name = owners[0].business_name;
+        user.email = owners[0].email;
+      }
+    }
+
+    // Ambil store_name jika admin/kasir
+    if ((user.role === 'admin' || user.role === 'cashier') && user.store_id) {
+      let storeRow = null;
+      // 1. Cek di tenant DB jika ada db_name
+      if (user.db_name) {
+        try {
+          const exists = await databaseExists(user.db_name);
+          if (exists) {
+            const tenantConn = await getTenantConnection(user.db_name);
+            const [stores] = await tenantConn.query('SELECT name FROM stores WHERE id = ?', [user.store_id]);
+            if (stores.length > 0) storeRow = stores[0];
+            await tenantConn.end();
+          }
+        } catch (e) { /* ignore */ }
+      }
+      // 2. Fallback ke main DB jika tidak ketemu di tenant DB
+      if (!storeRow) {
+        try {
+          const [stores] = await db.query('SELECT name FROM stores WHERE id = ?', [user.store_id]);
+          if (stores.length > 0) storeRow = stores[0];
+        } catch (e) { /* ignore */ }
+      }
+      // 3. Jika tetap tidak ketemu, isi dengan string kosong
+      store_name = storeRow ? storeRow.name : '';
+    }
+
+    // Build response sesuai role
+    let profile = {
+      id: user.id,
+      role: user.role,
+      owner_id: user.owner_id,
+      store_id: user.store_id,
+      username: user.username,
+      email: user.email,
+      plan: user.plan
+    };
+    if (user.role === 'owner') {
+      profile.business_name = business_name;
+    }
+    if (user.role === 'admin' || user.role === 'cashier') {
+      profile.store_name = store_name;
+    }
+
+    res.json({ success: true, message: 'Profil user', user: profile });
   },
 
   async testProtected(req, res) {
