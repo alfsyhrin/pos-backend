@@ -264,6 +264,7 @@ CREATE TABLE `users` (
   `owner_id` int(11) NOT NULL,
   `store_id` int(11) DEFAULT NULL,
   `name` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('owner','admin','cashier') DEFAULT 'cashier',
