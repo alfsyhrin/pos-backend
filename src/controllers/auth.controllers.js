@@ -133,6 +133,7 @@ const AuthController = {
         plan,
         business_name, // untuk owner
         store_name     // untuk admin/kasir
+        // stores akan ditambahkan di bawah jika owner
       };
 
       // --- Ambil daftar store milik owner jika role owner ---
@@ -155,6 +156,8 @@ const AuthController = {
           const [storeRows] = await db.query('SELECT id, name FROM stores WHERE owner_id = ?', [ownerIdForToken]);
           stores = storeRows.map(s => ({ id: s.id, name: s.name }));
         }
+        // --- Tambahkan langsung ke payload ---
+        payload.stores = stores;
       }
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
