@@ -121,23 +121,10 @@ const AuthController = {
 
       // --- END PENYESUAIAN ---
 
-      const payload = {
-        id: user.id,
-        owner_id: ownerIdForToken,
-        store_id: user.store_id || null,
-        role: user.role || userType,
-        username: user.username || user.email,
-        name: user.name || user.business_name,
-        email: user.email || null,
-        db_name,
-        plan,
-        business_name, // untuk owner
-        store_name     // untuk admin/kasir
-        // stores akan ditambahkan di bawah jika owner
-      };
-
       // --- Ambil daftar store milik owner jika role owner ---
       let stores = [];
+      let store_id = null;
+      let store_name = null;
       if (user.role === 'owner' && ownerIdForToken) {
         // 1. Cek di tenant DB jika ada
         if (db_name) {
@@ -156,9 +143,29 @@ const AuthController = {
           const [storeRows] = await db.query('SELECT id, name FROM stores WHERE owner_id = ?', [ownerIdForToken]);
           stores = storeRows.map(s => ({ id: s.id, name: s.name }));
         }
-        // --- Tambahkan langsung ke payload ---
-        payload.stores = stores;
+        // --- Jika hanya ada satu store, isi store_id dan store_name di payload ---
+        if (stores.length === 1) {
+          store_id = stores[0].id;
+          store_name = stores[0].name;
+        }
       }
+
+      // --- END AMBIL STORES ---
+
+      const payload = {
+        id: user.id,
+        owner_id: ownerIdForToken,
+        store_id: store_id || user.store_id || null,
+        role: user.role || userType,
+        username: user.username || user.email,
+        name: user.name || user.business_name,
+        email: user.email || null,
+        db_name,
+        plan,
+        business_name, // untuk owner
+        store_name: store_name || null, // untuk owner/admin/kasir
+        stores // array of {id, name}
+      };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
