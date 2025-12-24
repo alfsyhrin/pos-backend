@@ -135,6 +135,28 @@ const AuthController = {
         store_name     // untuk admin/kasir
       };
 
+      // --- Ambil daftar store milik owner jika role owner ---
+      let stores = [];
+      if (user.role === 'owner' && ownerIdForToken) {
+        // 1. Cek di tenant DB jika ada
+        if (db_name) {
+          try {
+            const exists = await databaseExists(db_name);
+            if (exists) {
+              const tenantConn = await getTenantConnection(db_name);
+              const [storeRows] = await tenantConn.query('SELECT id, name FROM stores WHERE owner_id = ?', [ownerIdForToken]);
+              stores = storeRows.map(s => ({ id: s.id, name: s.name }));
+              await tenantConn.end();
+            }
+          } catch (e) { /* ignore */ }
+        }
+        // 2. Fallback ke main DB jika tidak ada di tenant DB
+        if (!stores.length) {
+          const [storeRows] = await db.query('SELECT id, name FROM stores WHERE owner_id = ?', [ownerIdForToken]);
+          stores = storeRows.map(s => ({ id: s.id, name: s.name }));
+        }
+      }
+
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
       // Log aktivitas login
@@ -159,7 +181,12 @@ const AuthController = {
         });
       }
 
-      res.json({ success: true, message: 'Login berhasil', token, user: payload });
+      // Tambahkan stores ke response jika owner
+      if (user.role === 'owner') {
+        res.json({ success: true, message: 'Login berhasil', token, user: payload, stores });
+      } else {
+        res.json({ success: true, message: 'Login berhasil', token, user: payload });
+      }
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ success: false, message: 'Terjadi kesalahan server', error: error.message });
