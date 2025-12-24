@@ -21,13 +21,21 @@ const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
 function sanitizeJenisDiskon(val) {
   if (typeof val !== 'string') return null;
-  const allowed = ['percentage', 'nominal'];
+  const allowed = ['percentage', 'nominal', 'buyxgety'];
   return allowed.includes(val) ? val : null;
 }
 
 function mapPromoType(val) {
   if (val === 'percent') return 'percentage';
   if (val === 'nominal') return 'nominal';
+  // Mapping semua variasi buy x get y dari frontend ke 'buyxgety'
+  if (
+    val === 'buyxgety' ||
+    val === 'buy_get' ||
+    val === 'buyget' ||
+    val === 'buyXgetY' ||
+    val === 'buyXGetY'
+  ) return 'buyxgety';
   return val;
 }
 
@@ -49,8 +57,18 @@ async create(req, res) {
     // Mapping promoType dari frontend ke value database
     if (req.body.promoType !== undefined) req.body.promoType = mapPromoType(req.body.promoType);
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
-    if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
-    if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+
+    if (req.body.jenis_diskon === 'buyxgety') {
+      req.body.nilai_diskon = null;
+      if (req.body.buyQty !== undefined) req.body.buy_qty = req.body.buyQty;
+      if (req.body.freeQty !== undefined) req.body.free_qty = req.body.freeQty;
+    } else {
+      if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
+      if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+      req.body.buy_qty = null;
+      req.body.free_qty = null;
+    }
+
     if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
 
     const {
@@ -286,8 +304,18 @@ async update(req, res) {
     // Mapping promoType dari frontend ke value database
     if (req.body.promoType !== undefined) req.body.promoType = mapPromoType(req.body.promoType);
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
-    if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
-    if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+
+    if (req.body.jenis_diskon === 'buyxgety') {
+      req.body.nilai_diskon = null;
+      if (req.body.buyQty !== undefined) req.body.buy_qty = req.body.buyQty;
+      if (req.body.freeQty !== undefined) req.body.free_qty = req.body.freeQty;
+    } else {
+      if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
+      if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+      req.body.buy_qty = null;
+      req.body.free_qty = null;
+    }
+
     if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
 
     const allowedFields = [
