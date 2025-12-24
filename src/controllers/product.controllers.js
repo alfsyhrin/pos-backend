@@ -27,6 +27,14 @@ async create(req, res) {
   let isTenant = false;
   try {
     const { store_id } = req.params;
+    // =======================
+    // NORMALISASI FIELD FLUTTER
+    // =======================
+    if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
+    if (req.body.costPrice !== undefined) req.body.cost_price = req.body.costPrice;
+    if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
+    if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
+    if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
     const {
       name, sku, barcode, price, cost_price, stock, is_active,
       category, description,
@@ -258,9 +266,14 @@ async update(req, res) {
       updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
     }
 
-    // Mapping field dari frontend ke backend
-    if (req.body.sellPrice !== undefined) updateData.price = req.body.sellPrice;
-    if (req.body.costPrice !== undefined) updateData.cost_price = req.body.costPrice;
+// =======================
+    // NORMALISASI FIELD FLUTTER
+    // =======================
+    if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
+    if (req.body.costPrice !== undefined) req.body.cost_price = req.body.costPrice;
+    if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
+    if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
+    if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
 
     // Field lain opsional
     [
