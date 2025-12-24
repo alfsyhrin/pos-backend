@@ -25,6 +25,12 @@ function sanitizeJenisDiskon(val) {
   return allowed.includes(val) ? val : null;
 }
 
+function mapPromoType(val) {
+  if (val === 'percent') return 'percentage';
+  if (val === 'nominal') return 'nominal';
+  return val;
+}
+
 const ProductController = {
   // Create new product with discount logic
 // Create new product with discount logic
@@ -33,16 +39,18 @@ async create(req, res) {
   let isTenant = false;
   try {
     const { store_id } = req.params;
+
     // =======================
     // NORMALISASI FIELD FLUTTER
     // =======================
     if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
     if (req.body.costPrice !== undefined) req.body.cost_price = req.body.costPrice;
+
+    // Mapping promoType dari frontend ke value database
+    if (req.body.promoType !== undefined) req.body.promoType = mapPromoType(req.body.promoType);
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
     if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
     if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
-
-    // Sanitasi jenis_diskon
     if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
 
     const {
@@ -81,10 +89,10 @@ async create(req, res) {
 
     // Mapping promo/diskon
     const promoMapping = {
-      jenis_diskon: promoType || jenis_diskon || null,
-      nilai_diskon: promoPercent || promoAmount || nilai_diskon || null,
+      jenis_diskon: req.body.jenis_diskon || null,
+      nilai_diskon: req.body.nilai_diskon || null,
       buy_qty: buyQty || buy_qty || null,
-      free_qty: buyQty || free_qty || null,
+      free_qty: freeQty || free_qty || null,
       diskon_bundle_min_qty: bundleQty || diskon_bundle_min_qty || null,
       diskon_bundle_value: bundleTotalPrice || diskon_bundle_value || null
     };
@@ -101,7 +109,7 @@ async create(req, res) {
       stock: stock || 0,
       category: category ?? null,
       description: description ?? null,
-      image_url: image_url ?? null, // <-- path gambar dari upload
+      image_url: image_url ?? null,
       is_active: is_active ?? 1,
       ...promoMapping
     };
@@ -274,6 +282,9 @@ async update(req, res) {
     // =======================
     if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
     if (req.body.costPrice !== undefined) req.body.cost_price = req.body.costPrice;
+
+    // Mapping promoType dari frontend ke value database
+    if (req.body.promoType !== undefined) req.body.promoType = mapPromoType(req.body.promoType);
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
     if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
     if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
