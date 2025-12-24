@@ -267,19 +267,19 @@ async update(req, res) {
     });
 
     // Validasi perubahan harga dan stok (jika dikirim)
-    if (updateData.price !== undefined && updateData.price !== product.price) {
-      const priceDiff = Math.abs(updateData.price - product.price);
-      const percentageChange = (priceDiff / product.price) * 100;
-      if (percentageChange > 10) {
-        return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
-      }
-    }
-    if (updateData.stock !== undefined && updateData.stock !== product.stock) {
-      const stockDiff = Math.abs(updateData.stock - product.stock);
-      if (stockDiff > 100) {
-        return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
-      }
-    }
+    // if (updateData.price !== undefined && updateData.price !== product.price) {
+    //   const priceDiff = Math.abs(updateData.price - product.price);
+    //   const percentageChange = (priceDiff / product.price) * 100;
+    //   if (percentageChange > 10) {
+    //     return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
+    //   }
+    // }
+    // if (updateData.stock !== undefined && updateData.stock !== product.stock) {
+    //   const stockDiff = Math.abs(updateData.stock - product.stock);
+    //   if (stockDiff > 100) {
+    //     return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
+    //   }
+    // }
 
     const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
     if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
