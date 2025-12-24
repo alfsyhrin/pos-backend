@@ -203,7 +203,38 @@ const UserController = {
         } finally {
             if (conn) await conn.end();
         }
+    },
+    // src/controllers/user.controllers.js
+
+// Delete (hapus permanen) user
+async delete(req, res) {
+    let conn;
+    try {
+        const { id } = req.params;
+        const dbName = req.user?.db_name;
+        if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
+        conn = await getTenantConnection(dbName);
+        const user = await UserModel.findById(conn, id);
+        if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+        await UserModel.delete(conn, id); // Hapus permanen
+
+        // Setelah hapus user
+        await ActivityLogModel.create(conn, {
+          user_id: req.user.id,
+          store_id: req.params.store_id,
+          action: 'delete_user',
+          detail: `Hapus user: ${user.name}`
+        });
+        res.json({ success: true, message: 'User berhasil dihapus permanen' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Gagal hapus user', error: error.message });
+    } finally {
+        if (conn) await conn.end();
     }
+}
+
+    
 };
 
 module.exports = UserController;
