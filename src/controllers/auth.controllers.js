@@ -124,7 +124,7 @@ const AuthController = {
       // --- Ambil daftar store milik owner jika role owner ---
       let stores = [];
       let store_id = null;
-      let store_name = null;
+      // let store_name = null;
       if (user.role === 'owner' && ownerIdForToken) {
         // 1. Cek di tenant DB jika ada
         if (db_name) {
