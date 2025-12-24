@@ -18,7 +18,7 @@ router.post(
 router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getAll);
 
 // Update Product (protected route)
-router.put('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, ProductController.update);
+router.put('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.update);
 
 // Delete Product (protected route)
 router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, ProductController.delete);

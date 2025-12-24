@@ -231,66 +231,76 @@ async create(req, res) {
     }
   },
 
-  // Update product
-  async update(req, res) {
-    let conn;
-    try {
-      const { store_id, id } = req.params;
-      const storeId = parseInt(store_id, 10);
-      const productId = parseInt(id, 10);
-      const updateData = req.body;
-      if (isNaN(productId)) return response.badRequest(res, 'ID produk tidak valid');
+async update(req, res) {
+  let conn;
+  try {
+    const { store_id, id } = req.params;
+    const storeId = parseInt(store_id, 10);
+    const productId = parseInt(id, 10);
 
-      if (req.user.role === 'cashier') return response.forbidden(res, 'Kasir tidak dapat mengupdate produk');
-      if (req.user.role === 'admin' && req.user.store_id !== storeId) return response.forbidden(res, 'Hanya dapat mengupdate produk di toko sendiri');
+    if (isNaN(productId)) return response.badRequest(res, 'ID produk tidak valid');
+    if (req.user.role === 'cashier') return response.forbidden(res, 'Kasir tidak dapat mengupdate produk');
+    if (req.user.role === 'admin' && req.user.store_id !== storeId) return response.forbidden(res, 'Hanya dapat mengupdate produk di toko sendiri');
 
-      const dbName = req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+    const dbName = req.user.db_name;
+    if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+    const exists = await databaseExists(dbName);
+    if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+    conn = await getTenantConnection(dbName);
 
-      const exists = await databaseExists(dbName);
-      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
+    const product = await ProductModel.findById(conn, productId, storeId);
+    if (!product) return response.notFound(res, 'Produk tidak ditemukan');
 
-      conn = await getTenantConnection(dbName);
-
-      const product = await ProductModel.findById(conn, productId, storeId);
-      if (!product) return response.notFound(res, 'Produk tidak ditemukan');
-
-      // Validasi perubahan harga dan stok
-      if (updateData.price !== undefined && updateData.price !== product.price) {
-        const priceDiff = Math.abs(updateData.price - product.price);
-        const percentageChange = (priceDiff / product.price) * 100;
-        if (percentageChange > 10) {
-          return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
-        }
-      }
-
-      if (updateData.stock !== undefined && updateData.stock !== product.stock) {
-        const stockDiff = Math.abs(updateData.stock - product.stock);
-        if (stockDiff > 100) {
-          return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
-        }
-      }
-
-      const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
-      if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
-
-      const updatedProduct = await ProductModel.findById(conn, productId, storeId);
-
-      // Log aktivitas
-      await ActivityLogModel.create(conn, {
-        user_id: req.user.id,
-        store_id: req.params.store_id,
-        action: 'edit_product',
-        detail: `Edit produk: ${updatedProduct.name}`
-      });
-
-      return response.success(res, updatedProduct, 'Produk berhasil diupdate');
-    } catch (error) {
-      return response.error(res, 'Terjadi kesalahan saat mengupdate produk', 500, error);
-    } finally {
-      if (conn) await conn.end();
+    // Build updateData only from fields that are sent
+    const updateData = {};
+    // Ambil path gambar dari upload jika ada
+    if (req.file) {
+      updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
     }
-  },
+    // Field lain opsional
+    [
+      'name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'is_active',
+      'category', 'description', 'jenis_diskon', 'nilai_diskon',
+      'buy_qty', 'free_qty', 'diskon_bundle_min_qty', 'diskon_bundle_value'
+    ].forEach(field => {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    });
+
+    // Validasi perubahan harga dan stok (jika dikirim)
+    if (updateData.price !== undefined && updateData.price !== product.price) {
+      const priceDiff = Math.abs(updateData.price - product.price);
+      const percentageChange = (priceDiff / product.price) * 100;
+      if (percentageChange > 10) {
+        return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
+      }
+    }
+    if (updateData.stock !== undefined && updateData.stock !== product.stock) {
+      const stockDiff = Math.abs(updateData.stock - product.stock);
+      if (stockDiff > 100) {
+        return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
+      }
+    }
+
+    const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
+    if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
+
+    const updatedProduct = await ProductModel.findById(conn, productId, storeId);
+
+    // Log aktivitas
+    await ActivityLogModel.create(conn, {
+      user_id: req.user.id,
+      store_id: req.params.store_id,
+      action: 'edit_product',
+      detail: `Edit produk: ${updatedProduct.name}`
+    });
+
+    return response.success(res, updatedProduct, 'Produk berhasil diupdate');
+  } catch (error) {
+    return response.error(res, 'Terjadi kesalahan saat mengupdate produk', 500, error);
+  } finally {
+    if (conn) await conn.end();
+  }
+},
 
   // Delete product
   async delete(req, res) {
