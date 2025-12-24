@@ -68,13 +68,13 @@ const ProductController = {
         name,
         sku,
         barcode,
-        price,
-        cost_price: cost_price || 0,
+        price: price || sellPrice || 0, // <-- tambahkan ini!
+        cost_price: cost_price || costPrice || 0,
         stock,
         category: category ?? null,
         description: description ?? null,
-        image_url: image_url ?? null,
-        is_active: is_active ?? 1,
+        image_url: image_url ?? imageUrl ?? null,
+        is_active: is_active ?? isActive ?? 1,
         ...promoMapping
       };
 
