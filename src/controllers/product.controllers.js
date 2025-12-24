@@ -19,6 +19,12 @@ const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
   // 'Eksklusif': 10000
 // };
 
+function sanitizeJenisDiskon(val) {
+  if (typeof val !== 'string') return null;
+  const allowed = ['percentage', 'nominal'];
+  return allowed.includes(val) ? val : null;
+}
+
 const ProductController = {
   // Create new product with discount logic
 // Create new product with discount logic
@@ -35,6 +41,10 @@ async create(req, res) {
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
     if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
     if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+
+    // Sanitasi jenis_diskon
+    if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
+
     const {
       name, sku, barcode, price, cost_price, stock, is_active,
       category, description,
@@ -74,7 +84,7 @@ async create(req, res) {
       jenis_diskon: promoType || jenis_diskon || null,
       nilai_diskon: promoPercent || promoAmount || nilai_diskon || null,
       buy_qty: buyQty || buy_qty || null,
-      free_qty: freeQty || free_qty || null,
+      free_qty: buyQty || free_qty || null,
       diskon_bundle_min_qty: bundleQty || diskon_bundle_min_qty || null,
       diskon_bundle_value: bundleTotalPrice || diskon_bundle_value || null
     };
@@ -267,8 +277,8 @@ async update(req, res) {
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
     if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
     if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
+    if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
 
-    // Hanya field yang diizinkan yang di-update
     const allowedFields = [
       'name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'is_active',
       'category', 'description', 'jenis_diskon', 'nilai_diskon',
@@ -276,7 +286,6 @@ async update(req, res) {
     ];
     const updateData = {};
 
-    // Ambil path gambar dari upload jika ada
     if (req.file) {
       updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
     }
@@ -302,13 +311,11 @@ async update(req, res) {
       updateData.stock = stockVal;
     }
 
-    // Jalankan update
     const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
     if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
 
     const updatedProduct = await ProductModel.findById(conn, productId, storeId);
 
-    // Log aktivitas
     await ActivityLogModel.create(conn, {
       user_id: req.user.id,
       store_id: req.params.store_id,
