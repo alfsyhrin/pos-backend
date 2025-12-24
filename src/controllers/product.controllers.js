@@ -257,6 +257,11 @@ async update(req, res) {
     if (req.file) {
       updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
     }
+
+    // Mapping field dari frontend ke backend
+    if (req.body.sellPrice !== undefined) updateData.price = req.body.sellPrice;
+    if (req.body.costPrice !== undefined) updateData.cost_price = req.body.costPrice;
+
     // Field lain opsional
     [
       'name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'is_active',
