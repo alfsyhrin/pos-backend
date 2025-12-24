@@ -21,113 +21,117 @@ const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
 const ProductController = {
   // Create new product with discount logic
-  async create(req, res) {
-    let conn;
-    let isTenant = false;
-    try {
-      const { store_id } = req.params;
-      const {
-        name, sku, barcode, price, cost_price, stock, image_url, is_active,
-        category, description,
-        promoType, promoPercent, promoAmount, buyQty, freeQty, bundleQty, bundleTotalPrice,
-        jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty
-      } = req.body;
+// Create new product with discount logic
+async create(req, res) {
+  let conn;
+  let isTenant = false;
+  try {
+    const { store_id } = req.params;
+    const {
+      name, sku, barcode, price, cost_price, stock, image_url, is_active,
+      category, description,
+      promoType, promoPercent, promoAmount, buyQty, freeQty, bundleQty, bundleTotalPrice,
+      jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty
+    } = req.body;
 
-      const owner_id = req.user.owner_id;
-      const dbName = req.user.db_name;
-      if (dbName) {
-        const exists = await databaseExists(dbName);
-        if (exists) {
-          conn = await getTenantConnection(dbName);
-          isTenant = true;
-        }
+    const owner_id = req.user.owner_id;
+    const dbName = req.user.db_name;
+    if (dbName) {
+      const exists = await databaseExists(dbName);
+      if (exists) {
+        conn = await getTenantConnection(dbName);
+        isTenant = true;
       }
-      if (!conn) {
-        conn = pool;
-      }
-
-      // Validasi barcode unik per store
-      if (barcode) {
-        const existing = await ProductModel.findByBarcode(conn, store_id, barcode);
-        if (existing) return response.badRequest(res, 'Barcode sudah terdaftar di toko ini');
-      }
-
-      // Mapping promo/diskon
-      const promoMapping = {
-        jenis_diskon: promoType || jenis_diskon || null,
-        nilai_diskon: promoPercent || promoAmount || nilai_diskon || null,
-        buy_qty: buyQty || buy_qty || null,
-        free_qty: buyQty || free_qty || null,
-        diskon_bundle_min_qty: bundleQty || diskon_bundle_min_qty || null,
-        diskon_bundle_value: bundleTotalPrice || diskon_bundle_value || null
-      };
-
-      const productData = {
-        owner_id,
-        store_id,
-        name,
-        sku,
-        barcode,
-        price: price || sellPrice || 0, // <-- tambahkan ini!
-        cost_price: cost_price || costPrice || 0,
-        stock,
-        category: category ?? null,
-        description: description ?? null,
-        image_url: image_url ?? imageUrl ?? null,
-        is_active: is_active ?? isActive ?? 1,
-        ...promoMapping
-      };
-
-      const plan = req.user.plan; // misal: 'Standard', 'Pro', 'Eksklusif'
-      console.log('DEBUG plan:', req.user.plan);
-      const productLimit = getPackageLimit(plan, 'product_limit');
-      const totalProduct = await ProductModel.countByStore(conn, store_id);
-      if (totalProduct >= productLimit) {
-        return response.badRequest(res, `Batas produk (${productLimit}) untuk paket ${plan} telah tercapai`);
-      }
-
-      const productId = await ProductModel.create(conn, productData);
-      const created = await ProductModel.findById(conn, productId, store_id);
-
-      // Mapping response agar cocok dengan frontend
-      const mapped = {
-        id: created.id,
-        name: created.name,
-        sku: created.sku,
-        barcode: created.barcode,
-        costPrice: Number(created.cost_price || 0),
-        sellPrice: Number(created.price || 0),
-        stock: created.stock,
-        category: created.category,
-        description: created.description,
-        imageUrl: created.image_url,
-        promoType: created.jenis_diskon,
-        promoPercent: Number(created.nilai_diskon || 0),
-        promoAmount: Number(created.nilai_diskon || 0),
-        buyQty: created.buy_qty,
-        freeQty: created.free_qty,
-        bundleQty: created.diskon_bundle_min_qty,
-        bundleTotalPrice: Number(created.diskon_bundle_value || 0),
-        isActive: created.is_active,
-        createdAt: created.created_at,
-        updatedAt: created.updated_at
-      };
-
-      // Log aktivitas
-      await ActivityLogModel.create(conn, {
-        user_id: req.user.id,
-        store_id: req.params.store_id,
-        action: 'add_product',
-        detail: `Tambah produk: ${name}`
-      });
-
-      return response.created(res, mapped, 'Produk berhasil ditambahkan');
-    } catch (error) {
-      return response.error(res, error, 'Terjadi kesalahan saat membuat produk');
-    } finally {
-      if (conn && isTenant) await conn.end();
     }
-  },
+    if (!conn) {
+      conn = pool;
+    }
+
+    // Validasi barcode unik per store
+    if (barcode) {
+      const existing = await ProductModel.findByBarcode(conn, store_id, barcode);
+      if (existing) return response.badRequest(res, 'Barcode sudah terdaftar di toko ini');
+    }
+
+    // Mapping promo/diskon
+    const promoMapping = {
+      jenis_diskon: promoType || jenis_diskon || null,
+      nilai_diskon: promoPercent || promoAmount || nilai_diskon || null,
+      buy_qty: buyQty || buy_qty || null,
+      free_qty: freeQty || free_qty || null,
+      diskon_bundle_min_qty: bundleQty || diskon_bundle_min_qty || null,
+      diskon_bundle_value: bundleTotalPrice || diskon_bundle_value || null
+    };
+
+    // Data produk
+    const productData = {
+      owner_id,
+      store_id,
+      name,
+      sku: sku || null,
+      barcode: barcode || null,
+      price: price || 0,           // Hanya price
+      cost_price: cost_price || 0, // Hanya cost_price
+      stock: stock || 0,
+      category: category ?? null,
+      description: description ?? null,
+      image_url: image_url ?? null,
+      is_active: is_active ?? 1,
+      ...promoMapping               // masukkan promo langsung
+    };
+
+    // Cek limit produk berdasarkan paket
+    const plan = req.user.plan; // misal: 'Standard', 'Pro', 'Eksklusif'
+    console.log('DEBUG plan:', plan);
+    const productLimit = getPackageLimit(plan, 'product_limit');
+    const totalProduct = await ProductModel.countByStore(conn, store_id);
+    if (totalProduct >= productLimit) {
+      return response.badRequest(res, `Batas produk (${productLimit}) untuk paket ${plan} telah tercapai`);
+    }
+
+    const productId = await ProductModel.create(conn, productData);
+    const created = await ProductModel.findById(conn, productId, store_id);
+
+    // Mapping response agar cocok dengan frontend
+    const mapped = {
+      id: created.id,
+      name: created.name,
+      sku: created.sku,
+      barcode: created.barcode,
+      costPrice: Number(created.cost_price || 0),
+      sellPrice: Number(created.price || 0),
+      stock: created.stock,
+      category: created.category,
+      description: created.description,
+      imageUrl: created.image_url,
+      promoType: created.jenis_diskon,
+      promoPercent: Number(created.nilai_diskon || 0),
+      promoAmount: Number(created.nilai_diskon || 0),
+      buyQty: created.buy_qty,
+      freeQty: created.free_qty,
+      bundleQty: created.diskon_bundle_min_qty,
+      bundleTotalPrice: Number(created.diskon_bundle_value || 0),
+      isActive: created.is_active,
+      createdAt: created.created_at,
+      updatedAt: created.updated_at
+    };
+
+    // Log aktivitas
+    await ActivityLogModel.create(conn, {
+      user_id: req.user.id,
+      store_id: store_id,
+      action: 'add_product',
+      detail: `Tambah produk: ${name}`
+    });
+
+    return response.created(res, mapped, 'Produk berhasil ditambahkan');
+  } catch (error) {
+    console.error("❌ ERROR CREATE PRODUK:", error);
+    return response.error(res, error, 'Terjadi kesalahan saat membuat produk');
+  } finally {
+    if (conn && isTenant) await conn.end();
+  }
+},
 
   // Get all products (tenant)
   async getAll(req, res) {
