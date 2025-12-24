@@ -6,7 +6,13 @@ const upload = require('../middleware/upload');
 const checkTenant = require('../middleware/checkTenant'); // Tambahkan ini
 
 // Create Product (protected route)
-router.post('/:store_id/products', authMiddleware(['owner', 'admin']), checkTenant, ProductController.create);
+router.post(
+  '/:store_id/products',
+  authMiddleware(['owner', 'admin']),
+  checkTenant,
+  upload.single('image'), // <-- tambahkan ini sebelum controller!
+  ProductController.create
+);
 
 // Get All Products for a Store (protected route)
 router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getAll);
