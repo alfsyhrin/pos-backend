@@ -87,6 +87,13 @@ const UserModel = {
         );
         return rows[0].total || 0;
     },
+
+    async delete(conn, id) {
+        await conn.execute(
+            `DELETE FROM users WHERE id = ?`,
+            [id]
+        );
+    }
 };
 
 module.exports = UserModel;
