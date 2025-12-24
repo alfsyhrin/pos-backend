@@ -496,53 +496,65 @@ const ProductController = {
     }
   },
 
-  search: async function (req, res) {
-    let conn;
-    try {
-      const { store_id } = req.params;
-      const q = (req.query.q || req.query.query || '').toString();
-      const dbName = req.user && req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
-
+search: async function (req, res) {
+  let conn;
+  let isTenant = false;
+  try {
+    const { store_id } = req.params;
+    const q = (req.query.q || req.query.query || '').toString();
+    const category = req.query.category;
+    const dbName = req.user && req.user.db_name;
+    if (dbName) {
       const exists = await databaseExists(dbName);
-      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
-
-      conn = await getTenantConnection(dbName);
-
-      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
-      const products = await ProductModel.simpleSearch(conn, store_id, q, limit);
-
-      const mapped = products.map(product => ({
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        barcode: product.barcode,
-        costPrice: Number(product.cost_price || 0),
-        sellPrice: Number(product.price || 0),
-        stock: product.stock,
-        category: product.category,
-        description: product.description,
-        imageUrl: product.image_url,
-        promoType: product.jenis_diskon,
-        promoPercent: Number(product.nilai_diskon || 0),
-        promoAmount: Number(product.nilai_diskon || 0),
-        buyQty: product.buy_qty,
-        freeQty: product.free_qty,
-        bundleQty: product.diskon_bundle_min_qty,
-        bundleTotalPrice: Number(product.diskon_bundle_value || 0),
-        isActive: product.is_active,
-        createdAt: product.created_at,
-        updatedAt: product.updated_at
-      }));
-
-      return response.success(res, mapped, 'Hasil pencarian produk');
-    } catch (error) {
-      console.error('Search Products Error:', error);
-      return response.error(res, 'Terjadi kesalahan saat mencari produk', 500, error);
-    } finally {
-      if (conn) await conn.end();
+      if (exists) {
+        conn = await getTenantConnection(dbName);
+        isTenant = true;
+      }
     }
-  },
+    if (!conn) {
+      conn = pool;
+    }
+
+    // Build filter object
+    const filters = {};
+    if (q) filters.search = q;
+    if (category) filters.category = category;
+    if (req.query.limit) filters.limit = req.query.limit;
+
+    // Gunakan filter category meskipun q kosong
+    const products = await ProductModel.findAllByStore(conn, store_id, filters);
+
+    const mapped = products.map(product => ({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      barcode: product.barcode,
+      costPrice: Number(product.cost_price || 0),
+      sellPrice: Number(product.price || 0),
+      stock: product.stock,
+      category: product.category,
+      description: product.description,
+      imageUrl: product.image_url,
+      promoType: product.jenis_diskon,
+      promoPercent: Number(product.nilai_diskon || 0),
+      promoAmount: Number(product.nilai_diskon || 0),
+      buyQty: product.buy_qty,
+      freeQty: product.free_qty,
+      bundleQty: product.diskon_bundle_min_qty,
+      bundleTotalPrice: Number(product.diskon_bundle_value || 0),
+      isActive: product.is_active,
+      createdAt: product.created_at,
+      updatedAt: product.updated_at
+    }));
+
+    return response.success(res, mapped, 'Hasil pencarian produk');
+  } catch (error) {
+    console.error('Search Products Error:', error);
+    return response.error(res, 'Terjadi kesalahan saat mencari produk', 500, error);
+  } finally {
+    if (conn && isTenant) await conn.end();
+  }
+},
 };
 
 module.exports = ProductController;
