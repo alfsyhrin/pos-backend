@@ -28,11 +28,19 @@ async create(req, res) {
   try {
     const { store_id } = req.params;
     const {
-      name, sku, barcode, price, cost_price, stock, image_url, is_active,
+      name, sku, barcode, price, cost_price, stock, is_active,
       category, description,
       promoType, promoPercent, promoAmount, buyQty, freeQty, bundleQty, bundleTotalPrice,
       jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty
     } = req.body;
+
+    // Ambil path gambar dari upload jika ada
+    let image_url = null;
+    if (req.file) {
+      image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+    } else if (req.body.image_url) {
+      image_url = req.body.image_url;
+    }
 
     const owner_id = req.user.owner_id;
     const dbName = req.user.db_name;
@@ -70,19 +78,18 @@ async create(req, res) {
       name,
       sku: sku || null,
       barcode: barcode || null,
-      price: price || 0,           // Hanya price
-      cost_price: cost_price || 0, // Hanya cost_price
+      price: price || 0,
+      cost_price: cost_price || 0,
       stock: stock || 0,
       category: category ?? null,
       description: description ?? null,
-      image_url: image_url ?? null,
+      image_url: image_url ?? null, // <-- path gambar dari upload
       is_active: is_active ?? 1,
-      ...promoMapping               // masukkan promo langsung
+      ...promoMapping
     };
 
     // Cek limit produk berdasarkan paket
-    const plan = req.user.plan; // misal: 'Standard', 'Pro', 'Eksklusif'
-    console.log('DEBUG plan:', plan);
+    const plan = req.user.plan;
     const productLimit = getPackageLimit(plan, 'product_limit');
     const totalProduct = await ProductModel.countByStore(conn, store_id);
     if (totalProduct >= productLimit) {
