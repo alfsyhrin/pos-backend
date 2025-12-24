@@ -23,6 +23,7 @@ const ProductController = {
   // Create new product with discount logic
   async create(req, res) {
     let conn;
+    let isTenant = false;
     try {
       const { store_id } = req.params;
       const {
@@ -34,13 +35,16 @@ const ProductController = {
 
       const owner_id = req.user.owner_id;
       const dbName = req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
-
-      // CEK DULU ADA NGGAK
-      const exists = await databaseExists(dbName);
-      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
-
-      conn = await getTenantConnection(dbName);
+      if (dbName) {
+        const exists = await databaseExists(dbName);
+        if (exists) {
+          conn = await getTenantConnection(dbName);
+          isTenant = true;
+        }
+      }
+      if (!conn) {
+        conn = pool;
+      }
 
       // Validasi barcode unik per store
       if (barcode) {
@@ -121,22 +125,29 @@ const ProductController = {
     } catch (error) {
       return response.error(res, error, 'Terjadi kesalahan saat membuat produk');
     } finally {
-      if (conn) await conn.end();
+      if (conn && isTenant) await conn.end();
     }
   },
 
   // Get all products (tenant)
   async getAll(req, res) {
     let conn;
+    let isTenant = false;
     try {
       const { store_id } = req.params;
       const dbName = req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
+      if (dbName) {
+        const exists = await databaseExists(dbName);
+        if (exists) {
+          conn = await getTenantConnection(dbName);
+          isTenant = true;
+        }
+      }
+      // Jika tidak ada tenant DB, fallback ke main DB
+      if (!conn) {
+        conn = pool;
+      }
 
-      const exists = await databaseExists(dbName);
-      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
-
-      conn = await getTenantConnection(dbName);
       const products = await ProductModel.findAllByStore(conn, store_id);
 
       // Mapping agar cocok dengan frontend
@@ -165,11 +176,10 @@ const ProductController = {
 
       return response.success(res, mapped, 'Produk berhasil diambil');
     } catch (error) {
-      // Tambahkan log error detail
       console.error('GetAll Products Error:', error);
       return response.error(res, 'Terjadi kesalahan saat mengambil produk', 500, error);
     } finally {
-      if (conn) await conn.end();
+      if (conn && isTenant) await conn.end();
     }
   },
 
@@ -445,24 +455,30 @@ const ProductController = {
 
   async uploadProductImage(req, res) {
     let conn;
+    let isTenant = false;
     try {
+      const { store_id } = req.params;
       const owner_id = req.user.owner_id;
       const { product_id } = req.body;
       if (!req.file) return response.badRequest(res, 'File gambar tidak ditemukan');
 
       const dbName = req.user.db_name;
-      if (!dbName) return response.badRequest(res, 'Tenant DB not available in token.');
-
-      const exists = await databaseExists(dbName);
-      if (!exists) return response.badRequest(res, `Database tenant (${dbName}) tidak ditemukan. Silakan hubungi admin.`);
-
-      conn = await getTenantConnection(dbName);
+      if (dbName) {
+        const exists = await databaseExists(dbName);
+        if (exists) {
+          conn = await getTenantConnection(dbName);
+          isTenant = true;
+        }
+      }
+      if (!conn) {
+        conn = pool;
+      }
 
       // --- VALIDASI LIMIT GAMBAR PRODUK ---
       const plan = req.user.plan;
       const imageLimit = getPackageLimit(plan, 'image_limit');
       // Hitung produk yang sudah punya gambar
-      const [rows] = await conn.execute('SELECT COUNT(*) as total FROM products WHERE image_url IS NOT NULL AND image_url != ""');
+      const [rows] = await conn.execute('SELECT COUNT(*) as total FROM products WHERE image_url IS NOT NULL AND image_url != "" AND store_id = ?', [store_id]);
       const totalImage = rows[0].total || 0;
       if (totalImage >= imageLimit) {
         return response.badRequest(res, `Batas upload gambar (${imageLimit}) untuk paket ${plan} telah tercapai`);
@@ -470,13 +486,13 @@ const ProductController = {
       // --- END VALIDASI ---
 
       const imagePath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
-      await conn.execute('UPDATE products SET image_url = ? WHERE id = ?', [imagePath, product_id]);
+      await conn.execute('UPDATE products SET image_url = ? WHERE id = ? AND store_id = ?', [imagePath, product_id, store_id]);
 
       return response.success(res, { image_url: imagePath }, 'Gambar produk berhasil diupload');
     } catch (error) {
       return response.error(res, 'Gagal upload gambar', 500, error);
     } finally {
-      if (conn) await conn.end();
+      if (conn && isTenant) await conn.end();
     }
   },
 

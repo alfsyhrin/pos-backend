@@ -33,6 +33,6 @@ router.get('/:store_id/products/search', authMiddleware(['owner', 'admin', 'cash
 router.get('/:store_id/products/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getById);
 
 // Endpoint upload gambar produk
-router.post('/upload-image', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.uploadProductImage);
+router.post('/:store_id/upload-image', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.uploadProductImage);
 
 module.exports = router;
