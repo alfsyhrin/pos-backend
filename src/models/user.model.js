@@ -30,7 +30,7 @@ const UserModel = {
 
     // List user by store (tenant)
     async findByStore(conn, store_id, search) {
-        let query = `SELECT * FROM users WHERE store_id = ? AND is_active = 1 AND role IN ('admin','cashier')`;
+        let query = `SELECT * FROM users WHERE store_id = ? AND role IN ('admin','cashier')`;
         let params = [store_id];
         if (search) {
             query += ` AND (name LIKE ? OR username LIKE ?)`;
@@ -42,7 +42,7 @@ const UserModel = {
 
     // List semua user milik owner (semua toko)
     async findAllByOwner(conn, owner_id, search) {
-        let query = `SELECT * FROM users WHERE owner_id = ? AND is_active = 1 AND role IN ('admin','cashier')`;
+        let query = `SELECT * FROM users WHERE owner_id = ? AND role IN ('admin','cashier')`;
         let params = [owner_id];
         if (search) {
             query += ` AND (name LIKE ? OR username LIKE ?)`;
