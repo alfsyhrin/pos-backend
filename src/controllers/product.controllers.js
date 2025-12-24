@@ -459,7 +459,6 @@ const ProductController = {
     try {
       const { store_id } = req.params;
       const owner_id = req.user.owner_id;
-      const { product_id } = req.body;
       if (!req.file) return response.badRequest(res, 'File gambar tidak ditemukan');
 
       const dbName = req.user.db_name;
@@ -485,8 +484,8 @@ const ProductController = {
       }
       // --- END VALIDASI ---
 
+      // Hanya upload file, tidak update ke produk manapun
       const imagePath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
-      await conn.execute('UPDATE products SET image_url = ? WHERE id = ? AND store_id = ?', [imagePath, product_id, store_id]);
 
       return response.success(res, { image_url: imagePath }, 'Gambar produk berhasil diupload');
     } catch (error) {
