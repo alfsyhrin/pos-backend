@@ -259,14 +259,7 @@ async update(req, res) {
     const product = await ProductModel.findById(conn, productId, storeId);
     if (!product) return response.notFound(res, 'Produk tidak ditemukan');
 
-    // Build updateData only from fields that are sent
-    const updateData = {};
-    // Ambil path gambar dari upload jika ada
-    if (req.file) {
-      updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
-    }
-
-// =======================
+    // =======================
     // NORMALISASI FIELD FLUTTER
     // =======================
     if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
@@ -275,30 +268,41 @@ async update(req, res) {
     if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
     if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
 
-    // Field lain opsional
-    [
+    // Hanya field yang diizinkan yang di-update
+    const allowedFields = [
       'name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'is_active',
       'category', 'description', 'jenis_diskon', 'nilai_diskon',
-      'buy_qty', 'free_qty', 'diskon_bundle_min_qty', 'diskon_bundle_value'
-    ].forEach(field => {
+      'buy_qty', 'free_qty', 'diskon_bundle_min_qty', 'diskon_bundle_value', 'image_url'
+    ];
+    const updateData = {};
+
+    // Ambil path gambar dari upload jika ada
+    if (req.file) {
+      updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+    }
+
+    allowedFields.forEach(field => {
       if (req.body[field] !== undefined) updateData[field] = req.body[field];
     });
 
-    // Validasi perubahan harga dan stok (jika dikirim)
-    // if (updateData.price !== undefined && updateData.price !== product.price) {
-    //   const priceDiff = Math.abs(updateData.price - product.price);
-    //   const percentageChange = (priceDiff / product.price) * 100;
-    //   if (percentageChange > 10) {
-    //     return response.badRequest(res, 'Perubahan harga tidak boleh lebih dari 10%');
-    //   }
-    // }
-    // if (updateData.stock !== undefined && updateData.stock !== product.stock) {
-    //   const stockDiff = Math.abs(updateData.stock - product.stock);
-    //   if (stockDiff > 100) {
-    //     return response.badRequest(res, 'Perubahan stok tidak boleh lebih dari 100 unit');
-    //   }
-    // }
+    // Validasi tipe data
+    if (updateData.price !== undefined) {
+      const priceVal = parseFloat(updateData.price);
+      if (isNaN(priceVal) || priceVal < 0) return response.badRequest(res, 'Harga harus berupa angka positif');
+      updateData.price = priceVal;
+    }
+    if (updateData.cost_price !== undefined) {
+      const costVal = parseFloat(updateData.cost_price);
+      if (isNaN(costVal) || costVal < 0) return response.badRequest(res, 'Harga modal harus berupa angka positif');
+      updateData.cost_price = costVal;
+    }
+    if (updateData.stock !== undefined) {
+      const stockVal = parseInt(updateData.stock, 10);
+      if (isNaN(stockVal) || stockVal < 0) return response.badRequest(res, 'Stok harus berupa angka positif');
+      updateData.stock = stockVal;
+    }
 
+    // Jalankan update
     const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
     if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
 
@@ -314,6 +318,7 @@ async update(req, res) {
 
     return response.success(res, updatedProduct, 'Produk berhasil diupdate');
   } catch (error) {
+    console.error('❌ ERROR UPDATE PRODUK:', error);
     return response.error(res, 'Terjadi kesalahan saat mengupdate produk', 500, error);
   } finally {
     if (conn) await conn.end();
