@@ -56,7 +56,7 @@ const UserController = {
         let conn;
         try {
             const storeIdFromParams = req.params.store_id;
-            const { store_id: store_id_from_body, name, username, password, role } = req.body;
+            const { store_id: store_id_from_body, name, username, email, password, role } = req.body;
             let store_id = (store_id_from_body !== undefined) ? store_id_from_body : storeIdFromParams || null;
 
             const owner_id = req.user.owner_id;
@@ -117,7 +117,7 @@ const UserController = {
             // }
 
             const hashed = await bcrypt.hash(password, 10);
-            const userId = await UserModel.create(conn, { owner_id, store_id, name, username, password: hashed, role });
+            const userId = await UserModel.create(conn, { owner_id, store_id, name, username, email, password: hashed, role });
             // Setelah tambah user
             await ActivityLogModel.create(conn, {
               user_id: req.user.id,
@@ -138,7 +138,7 @@ const UserController = {
         let conn;
         try {
             const { id } = req.params;
-            const { name, username, password, role, is_active } = req.body;
+            const { name, username, email, password, role, is_active } = req.body;
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
             conn = await getTenantConnection(dbName);
@@ -156,17 +156,19 @@ const UserController = {
             let updateData = {};
             if (name !== undefined) updateData.name = name;
             if (username !== undefined) updateData.username = username;
+            if (email !== undefined) updateData.email = email; // hanya update jika dikirim
             if (role !== undefined) updateData.role = role;
             if (is_active !== undefined) updateData.is_active = is_active;
             if (password) updateData.password = await bcrypt.hash(password, 10);
 
             await UserModel.update(conn, id, updateData);
+
             // Setelah edit user
             await ActivityLogModel.create(conn, {
-              user_id: req.user.id,
-              store_id: req.params.store_id,
-              action: 'edit_user',
-              detail: `Edit user: ${name}`
+                user_id: req.user.id,
+                store_id: req.params.store_id,
+                action: 'edit_user',
+                detail: `Edit user: ${name || userToUpdate.name}`
             });
             res.json({ success: true, message: 'User berhasil diupdate' });
         } catch (error) {

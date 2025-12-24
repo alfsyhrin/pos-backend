@@ -55,8 +55,8 @@ const UserModel = {
     // Create user (tenant)
     async create(conn, data) {
         const [result] = await conn.execute(
-            `INSERT INTO users (owner_id, store_id, name, username, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)`,
-            [data.owner_id, data.store_id, data.name, data.username, data.password, data.role]
+            `INSERT INTO users (owner_id, store_id, name, username, email, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+            [data.owner_id, data.store_id, data.name, data.username, data.email, data.password, data.role]
         );
         return result.insertId;
     },
