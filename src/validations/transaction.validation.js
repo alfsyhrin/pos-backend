@@ -19,6 +19,14 @@ const createTransactionSchema = Joi.object({
   received_amount: Joi.number().min(0).required(),
   change_amount: Joi.number().min(0).required(),
   items: Joi.array().items(transactionItemSchema).min(1).required()
+    .custom((value, helpers) => {
+      const ids = value.map(i => i.product_id);
+      const hasDuplicate = ids.length !== new Set(ids).size;
+      if (hasDuplicate) {
+        return helpers.error('any.invalid', { message: 'Duplicate product_id in items' });
+      }
+      return value;
+    }, 'No duplicate product_id in items')
 });
 
 // Validasi untuk update transaksi (opsional, bisa disesuaikan)

@@ -154,6 +154,7 @@ const TransactionController = {
                 throw errTx;
             }
         } catch (error) {
+            console.error('Error creating transaction:', error); // Tambahkan ini
             return response.error(res, 'Error creating transaction', 500, error);
         } finally {
             if (conn) await conn.end();
@@ -299,58 +300,58 @@ const TransactionController = {
     },
 
     // Menambahkan barang ke keranjang belanja (simulasi)
-    async addItemToCart(req, res) {
-        let conn;
-        try {
-            const { store_id } = req.params;
-            const { product_id, quantity, price, discount_type, discount_value } = req.body;
-            const dbName = req.user.db_name;
-            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
-            conn = await getTenantConnection(dbName);
+    // async addItemToCart(req, res) {
+    //     let conn;
+    //     try {
+    //         const { store_id } = req.params;
+    //         const { product_id, quantity, price, discount_type, discount_value } = req.body;
+    //         const dbName = req.user.db_name;
+    //         if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+    //         conn = await getTenantConnection(dbName);
 
-            // Mendapatkan produk dari database
-            const product = await ProductModel.findById(conn, product_id, store_id);
-            if (!product) {
-                return response.badRequest(res, 'Produk tidak ditemukan', 404);
-            }
+    //         // Mendapatkan produk dari database
+    //         const product = await ProductModel.findById(conn, product_id, store_id);
+    //         if (!product) {
+    //             return response.badRequest(res, 'Produk tidak ditemukan', 404);
+    //         }
 
-            // Memeriksa stok produk
-            if (product.stock < quantity) {
-                return response.badRequest(res, 'Stok produk tidak cukup', 400);
-            }
+    //         // Memeriksa stok produk
+    //         if (product.stock < quantity) {
+    //             return response.badRequest(res, 'Stok produk tidak cukup', 400);
+    //         }
 
-            // Menghitung harga dan diskon
-            const subtotal = price * quantity;
-            let discountAmount = 0;
-            if (discount_type === 'percentage') {
-                discountAmount = (discount_value / 100) * subtotal;
-            } else if (discount_type === 'nominal') {
-                discountAmount = Math.min(discount_value, subtotal);
-            }
+    //         // Menghitung harga dan diskon
+    //         const subtotal = price * quantity;
+    //         let discountAmount = 0;
+    //         if (discount_type === 'percentage') {
+    //             discountAmount = (discount_value / 100) * subtotal;
+    //         } else if (discount_type === 'nominal') {
+    //             discountAmount = Math.min(discount_value, subtotal);
+    //         }
 
-            const totalAfterDiscount = subtotal - discountAmount;
+    //         const totalAfterDiscount = subtotal - discountAmount;
 
-            // Simulasi: kembalikan detail item
-            const item = {
-                product_id,
-                product_name: product.name,
-                sku: product.sku,
-                price,
-                quantity,
-                discount_type,
-                discount_value,
-                discount_amount: discountAmount,
-                subtotal,
-                total_after_discount: totalAfterDiscount,
-            };
+    //         // Simulasi: kembalikan detail item
+    //         const item = {
+    //             product_id,
+    //             product_name: product.name,
+    //             sku: product.sku,
+    //             price,
+    //             quantity,
+    //             discount_type,
+    //             discount_value,
+    //             discount_amount: discountAmount,
+    //             subtotal,
+    //             total_after_discount: totalAfterDiscount,
+    //         };
 
-            return response.success(res, item, 'Barang berhasil ditambahkan ke keranjang');
-        } catch (error) {
-            return response.error(res, 'Terjadi kesalahan saat menambahkan barang ke keranjang', 500, error);
-        } finally {
-            if (conn) await conn.end();
-        }
-    },
+    //         return response.success(res, item, 'Barang berhasil ditambahkan ke keranjang');
+    //     } catch (error) {
+    //         return response.error(res, 'Terjadi kesalahan saat menambahkan barang ke keranjang', 500, error);
+    //     } finally {
+    //         if (conn) await conn.end();
+    //     }
+    // },
 
     // Menyelesaikan transaksi pembayaran (mirip create, bisa digabung)
     async completeTransaction(req, res) {

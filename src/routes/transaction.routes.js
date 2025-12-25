@@ -29,12 +29,12 @@ router.post(
 );
 
 // Add Item to Cart (protected route)
-router.post(
-  '/:store_id/cart/add',
-  authMiddleware(['owner', 'admin', 'cashier']),
-  checkTenant,
-  TransactionController.addItemToCart
-);
+// router.post(
+//   '/:store_id/cart/add',
+//   authMiddleware(['owner', 'admin', 'cashier']),
+//   checkTenant,
+//   TransactionController.addItemToCart
+// );
 
 // Get All Transactions for a Store (protected route)
 router.get(

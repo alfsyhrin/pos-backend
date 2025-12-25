@@ -25,6 +25,8 @@ const TransactionModel = {
         const transactionId = isConn(connOrId) ? maybeIdOrItems : connOrId;
         const items = isConn(connOrId) ? maybeItems : maybeIdOrItems;
 
+        if (!items || !items.length) return;
+
         const values = items.map(item => [
             transactionId,
             item.product_id,
@@ -33,10 +35,12 @@ const TransactionModel = {
             Number(item.quantity) * Number(item.price)
         ]);
 
-        // Bulk insert
-        await db.query(
-            `INSERT INTO transaction_items (transaction_id, product_id, qty, price, subtotal) 
-             VALUES ?`, [values]
+        // Build placeholders for multi-row insert
+        const placeholders = values.map(() => '(?,?,?,?,?)').join(',');
+
+        await db.execute(
+            `INSERT INTO transaction_items (transaction_id, product_id, qty, price, subtotal) VALUES ${placeholders}`,
+            values.flat()
         );
     },
 
