@@ -70,17 +70,24 @@ const TransactionModel = {
             params.push(filters.payment_status);
         }
 
-        // Filter search (by transaction id, product name, user id, etc)
+        // Filter search (by transaction id, idShort, idFull, product_name, product.name)
         if (filters.search) {
             query += ` AND (
                 t.id LIKE ? 
+                OR t.idShort LIKE ?
+                OR t.idFull LIKE ?
                 OR EXISTS (
                     SELECT 1 FROM transaction_items ti 
                     LEFT JOIN products p ON ti.product_id = p.id 
-                    WHERE ti.transaction_id = t.id AND (p.name LIKE ? OR ti.product_name LIKE ?)
+                    WHERE ti.transaction_id = t.id 
+                      AND (
+                        ti.product_name LIKE ? 
+                        OR p.name LIKE ?
+                      )
                 )
             )`;
-            params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
+            const s = `%${filters.search}%`;
+            params.push(s, s, s, s, s);
         }
 
         // Filter by date (created_at)
@@ -92,16 +99,7 @@ const TransactionModel = {
             params.push(filters.start_date, filters.end_date);
         }
 
-        // Pagination
         query += ` ORDER BY t.created_at DESC`;
-        if (filters.limit) {
-            query += ` LIMIT ?`;
-            params.push(Number(filters.limit));
-        }
-        if (filters.offset) {
-            query += ` OFFSET ?`;
-            params.push(Number(filters.offset));
-        }
 
         const [rows] = await db.execute(query, params);
         return rows;
