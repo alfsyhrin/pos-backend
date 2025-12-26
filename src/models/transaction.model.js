@@ -61,12 +61,46 @@ const TransactionModel = {
         const db = isConn(connOrStoreId) ? connOrStoreId : pool;
         const storeId = isConn(connOrStoreId) ? maybeStoreId : connOrStoreId;
         const filters = isConn(connOrStoreId) ? maybeFilters || {} : maybeStoreId || {};
-        let query = `SELECT * FROM transactions WHERE store_id = ?`;
+        let query = `SELECT t.* FROM transactions t WHERE t.store_id = ?`;
         const params = [storeId];
 
-        if (filters.status) {
-            query += ` AND payment_status = ?`;
-            params.push(filters.status);
+        // Filter status
+        if (filters.payment_status) {
+            query += ` AND t.payment_status = ?`;
+            params.push(filters.payment_status);
+        }
+
+        // Filter search (by transaction id, product name, user id, etc)
+        if (filters.search) {
+            query += ` AND (
+                t.id LIKE ? 
+                OR EXISTS (
+                    SELECT 1 FROM transaction_items ti 
+                    LEFT JOIN products p ON ti.product_id = p.id 
+                    WHERE ti.transaction_id = t.id AND (p.name LIKE ? OR ti.product_name LIKE ?)
+                )
+            )`;
+            params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
+        }
+
+        // Filter by date (created_at)
+        if (filters.date) {
+            query += ` AND DATE(t.created_at) = ?`;
+            params.push(filters.date);
+        } else if (filters.start_date && filters.end_date) {
+            query += ` AND DATE(t.created_at) BETWEEN ? AND ?`;
+            params.push(filters.start_date, filters.end_date);
+        }
+
+        // Pagination
+        query += ` ORDER BY t.created_at DESC`;
+        if (filters.limit) {
+            query += ` LIMIT ?`;
+            params.push(Number(filters.limit));
+        }
+        if (filters.offset) {
+            query += ` OFFSET ?`;
+            params.push(Number(filters.offset));
         }
 
         const [rows] = await db.execute(query, params);
