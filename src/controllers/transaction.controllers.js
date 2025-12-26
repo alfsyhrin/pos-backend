@@ -30,8 +30,9 @@ const TransactionController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { user_id, total_cost, payment_type, payment_method, received_amount, change_amount, items } = req.body;
+            const { total_cost, payment_type, payment_method, received_amount, change_amount, items } = req.body;
             const dbName = req.user.db_name;
+            // Ambil user_id dari JWT/session, bukan dari req.body
             const userId = req.user.id;
             const userStoreId = req.user.store_id;
 
@@ -109,7 +110,7 @@ const TransactionController = {
             // Membuat objek transaksi
             const transaction = {
                 store_id,
-                user_id: userId,
+                user_id: userId, // selalu pakai ini
                 total_cost: grandTotal,
                 payment_type,
                 payment_method,

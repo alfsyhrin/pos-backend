@@ -30,16 +30,17 @@ const TransactionModel = {
         const values = items.map(item => [
             transactionId,
             item.product_id,
+            item.product_name || '', // <-- tambahkan product_name
             item.quantity,
             Number(item.price),
             Number(item.quantity) * Number(item.price)
         ]);
 
         // Build placeholders for multi-row insert
-        const placeholders = values.map(() => '(?,?,?,?,?)').join(',');
+        const placeholders = values.map(() => '(?,?,?,?,?,?)').join(',');
 
         await db.execute(
-            `INSERT INTO transaction_items (transaction_id, product_id, qty, price, subtotal) VALUES ${placeholders}`,
+            `INSERT INTO transaction_items (transaction_id, product_id, product_name, qty, price, subtotal) VALUES ${placeholders}`,
             values.flat()
         );
     },

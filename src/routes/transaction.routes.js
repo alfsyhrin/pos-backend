@@ -8,7 +8,7 @@ const { createTransactionSchema, updateTransactionSchema } = require('../validat
 // Create Transaction (protected route)
 router.post(
   '/:store_id/transactions',
-  authMiddleware(['owner', 'admin', 'cashier']),
+  authMiddleware(['admin', 'cashier']),
   checkTenant,
   (req, res, next) => {
     const { error } = createTransactionSchema.validate(req.body);
@@ -23,7 +23,7 @@ router.post(
 // Complete Transaction (protected route)
 router.post(
   '/:store_id/transactions/complete',
-  authMiddleware(['owner', 'admin', 'cashier']),
+  authMiddleware(['admin', 'cashier']),
   checkTenant,
   TransactionController.completeTransaction
 );
