@@ -73,9 +73,7 @@ const TransactionModel = {
         // Filter search (by transaction id, idShort, idFull, product_name, product.name)
         if (filters.search) {
             query += ` AND (
-                t.id LIKE ? 
-                OR t.idShort LIKE ?
-                OR t.idFull LIKE ?
+                t.id LIKE ?
                 OR EXISTS (
                     SELECT 1 FROM transaction_items ti 
                     LEFT JOIN products p ON ti.product_id = p.id 
@@ -87,7 +85,7 @@ const TransactionModel = {
                 )
             )`;
             const s = `%${filters.search}%`;
-            params.push(s, s, s, s, s);
+            params.push(s, s, s);
         }
 
         // Filter by date (created_at)

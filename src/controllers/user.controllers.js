@@ -153,10 +153,29 @@ const UserController = {
                 return res.status(403).json({ success: false, message: 'Owner hanya bisa update user di tokonya.' });
             }
 
+            // --- Tambahan validasi limit role ---
+            // Jika role diubah, cek limit role baru
+            let newRole = role !== undefined ? role : userToUpdate.role;
+            if (newRole === 'admin' || newRole === 'cashier') {
+                // Jika role berubah atau tetap, dan user sebelumnya bukan role tsb
+                if (userToUpdate.role !== newRole) {
+                    // Ambil plan
+                    const pool = require('../config/db');
+                    const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [userToUpdate.owner_id]);
+                    const plan = subs[0]?.plan || 'Standard';
+                    const roleLimit = getRoleLimit(plan, newRole);
+                    const totalRole = await UserModel.countByRole(conn, userToUpdate.store_id, newRole);
+                    if (totalRole >= roleLimit) {
+                        return res.status(400).json({ success: false, message: `Batas user role ${newRole} (${roleLimit}) untuk paket ${plan} telah tercapai` });
+                    }
+                }
+            }
+            // --- End validasi limit role ---
+
             let updateData = {};
             if (name !== undefined) updateData.name = name;
             if (username !== undefined) updateData.username = username;
-            if (email !== undefined) updateData.email = email; // hanya update jika dikirim
+            if (email !== undefined) updateData.email = email;
             if (role !== undefined) updateData.role = role;
             if (is_active !== undefined) updateData.is_active = is_active;
             if (password) updateData.password = await bcrypt.hash(password, 10);
