@@ -6,21 +6,22 @@ const { getTenantConnection } = require('../config/db');
 
 function mapTransactionToFrontend(tx, items = []) {
   return {
-    idShort: tx.id ? String(tx.id).padStart(6, '0') : '',
-    idFull: tx.id ? `TX${String(tx.id).padStart(6, '0')}` : '',
-    createdAt: tx.created_at ? new Date(tx.created_at) : new Date(),
-    method: tx.payment_method || tx.method || '',
-    total: Math.round(tx.total_cost || tx.total || 0),
-    received: Math.round(tx.received_amount || tx.received || 0),
-    change: Math.round(tx.change_amount || tx.change || 0),
-    items: items.map(it => ({
-      productId: it.product_id,
-      name: it.product_name || it.name,
-      sku: it.sku,
-      price: Number(it.price),
-      qty: it.quantity || it.qty,
-      lineTotal: Number(it.subtotal || it.lineTotal || (it.price * (it.quantity || it.qty))),
-    })),
+    transaction_id: tx.id, // <-- tambahkan ini
+    idShort: tx.idShort || tx.id?.toString().padStart(6, '0'),
+    idFull: tx.idFull || `TX${tx.id?.toString().padStart(6, '0')}`,
+    createdAt: tx.created_at,
+    method: tx.payment_method,
+    total: tx.total_cost,
+    received: tx.received_amount,
+    change: tx.change_amount,
+    items: items.map(item => ({
+      productId: item.product_id,
+      name: item.product_name,
+      sku: item.sku,
+      price: item.price,
+      qty: item.quantity,
+      lineTotal: item.subtotal
+    }))
   };
 }
 
@@ -252,29 +253,25 @@ const TransactionController = {
     },
 
     // Delete transaksi
-    async delete(req, res) {
+    delete: async function (req, res) {
         let conn;
         try {
-            const { store_id, id } = req.params;
+            const { store_id, transaction_id } = req.params;
             const dbName = req.user.db_name;
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            const transactionId = parseInt(id);
+            // Pastikan transaksi ada
+            const trx = await TransactionModel.findById(conn, transaction_id, store_id);
+            if (!trx) return response.notFound(res, 'Transaksi tidak ditemukan');
 
-            if (isNaN(transactionId)) {
-                return response.badRequest(res, 'ID transaksi tidak valid');
+            const deleted = await TransactionModel.delete(conn, transaction_id, store_id);
+            if (deleted) {
+                return response.success(res, null, 'Transaksi berhasil dihapus');
+            } else {
+                return response.error(res, 'Gagal menghapus transaksi');
             }
-
-            const isDeleted = await TransactionModel.delete(conn, transactionId, store_id);
-
-            if (!isDeleted) {
-                return response.error(res, 'Gagal menghapus transaksi', 400);
-            }
-
-            return response.success(res, null, 'Transaksi berhasil dihapus');
         } catch (error) {
-            console.error('Delete transaction error:', error);
             return response.error(res, 'Terjadi kesalahan saat menghapus transaksi', 500, error);
         } finally {
             if (conn) await conn.end();
