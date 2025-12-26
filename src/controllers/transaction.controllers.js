@@ -188,42 +188,22 @@ const TransactionController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { page = 1, limit = 20, payment_status, search, date, start_date, end_date } = req.query;
+            const { payment_status, search, date, start_date, end_date } = req.query;
             const dbName = req.user.db_name;
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            const pageNum = parseInt(page);
-            const limitNum = parseInt(limit);
-
-            // Validasi page dan limit
-            if (isNaN(pageNum) || pageNum < 1) {
-                return response.badRequest(res, 'Parameter page tidak valid');
-            }
-
-            if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-                return response.badRequest(res, 'Parameter limit harus antara 1-100');
-            }
-
-            // Kirim filter baru ke model
-            const filters = { payment_status, search, date, start_date, end_date, limit: limitNum, offset: (pageNum - 1) * limitNum };
+            // Kirim filter baru ke model, tanpa limit/offset
+            const filters = { payment_status, search, date, start_date, end_date };
 
             const transactions = await TransactionModel.findAllByStore(conn, store_id, filters);
-            const total = await TransactionModel.countByStore(conn, store_id, filters);
 
             const mapped = await Promise.all(transactions.map(async tx => {
                 const items = await TransactionModel.getItemsByTransactionId(conn, tx.id);
                 return mapTransactionToFrontend(tx, items);
             }));
 
-            return response.paginated(res, mapped, {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-                hasNext: pageNum < Math.ceil(total / limitNum),
-                hasPrev: pageNum > 1
-            }, 'Transaksi berhasil diambil');
+            return response.success(res, mapped, 'Transaksi berhasil diambil');
         } catch (error) {
             console.error('Get all transactions error:', error);
             return response.error(res, 'Terjadi kesalahan saat mengambil data transaksi', 500, error);
