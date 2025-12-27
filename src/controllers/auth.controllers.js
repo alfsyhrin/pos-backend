@@ -6,10 +6,15 @@ const db = require('../config/db');
 const { getTenantConnection, databaseExists } = require('../config/db');
 
 const AuthController = {
+
+  /* =====================================================
+     LOGIN
+  ===================================================== */
   async login(req, res) {
     let tenantConn;
     try {
       const { identifier, password, owner_id } = req.body;
+
       if (!identifier || !password) {
         return res.status(400).json({
           success: false,
@@ -24,14 +29,13 @@ const AuthController = {
       let business_name = null;
       let stores = [];
 
-      /* =====================================================
-         1️⃣ OWNER LOGIN (EMAIL → MAIN DB)
-      ===================================================== */
+      /* ================= OWNER LOGIN ================= */
       if (identifier.includes('@')) {
         const [rows] = await db.query(
           'SELECT * FROM users WHERE email = ? AND role = "owner"',
           [identifier]
         );
+
         if (!rows.length) {
           return res.status(401).json({ success: false, message: 'Email atau password salah' });
         }
@@ -39,17 +43,15 @@ const AuthController = {
         user = rows[0];
         ownerIdForToken = user.owner_id;
 
-        // Ambil db tenant
         const [clients] = await db.query(
           'SELECT db_name FROM clients WHERE owner_id = ?',
           [ownerIdForToken]
         );
-        db_name = clients[0]?.db_name || null;
 
-      } 
-      /* =====================================================
-         2️⃣ ADMIN / CASHIER LOGIN (USERNAME → TENANT DB)
-      ===================================================== */
+        db_name = clients[0]?.db_name || null;
+      }
+
+      /* ================= ADMIN / CASHIER LOGIN ================= */
       else {
         if (!owner_id) {
           return res.status(400).json({
@@ -62,45 +64,51 @@ const AuthController = {
           'SELECT db_name FROM clients WHERE owner_id = ?',
           [owner_id]
         );
+
         db_name = clients[0]?.db_name;
 
         if (!db_name || !(await databaseExists(db_name))) {
-          return res.status(400).json({ success: false, message: 'Database tenant tidak ditemukan' });
+          return res.status(400).json({
+            success: false,
+            message: 'Database tenant tidak ditemukan'
+          });
         }
 
         tenantConn = await getTenantConnection(db_name);
         user = await UserModel.findByUsername(tenantConn, identifier);
 
         if (!user) {
-          return res.status(401).json({ success: false, message: 'Username atau password salah' });
+          return res.status(401).json({
+            success: false,
+            message: 'Username atau password salah'
+          });
         }
 
         ownerIdForToken = user.owner_id;
       }
 
-      /* =====================================================
-         3️⃣ PASSWORD CHECK (SUMBER SUDAH BENAR)
-      ===================================================== */
+      /* ================= PASSWORD CHECK ================= */
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
-        return res.status(401).json({ success: false, message: 'Username/email atau password salah' });
+        return res.status(401).json({
+          success: false,
+          message: 'Username/email atau password salah'
+        });
       }
 
-      /* =====================================================
-         4️⃣ AMBIL PLAN
-      ===================================================== */
+      /* ================= PLAN ================= */
       let plan = user.plan;
       if (!plan && ownerIdForToken) {
         const [subs] = await db.query(
-          'SELECT plan FROM subscriptions WHERE owner_id = ? AND status = "Aktif" ORDER BY end_date DESC LIMIT 1',
+          `SELECT plan FROM subscriptions
+           WHERE owner_id = ? AND status = "Aktif"
+           ORDER BY end_date DESC LIMIT 1`,
           [ownerIdForToken]
         );
         plan = subs[0]?.plan || 'Standard';
       }
 
-      /* =====================================================
-         5️⃣ DATA TAMBAHAN SESUAI ROLE
-      ===================================================== */
+      /* ================= DATA TAMBAHAN ================= */
       if (user.role === 'owner') {
         const [owners] = await db.query(
           'SELECT business_name FROM owners WHERE id = ?',
@@ -127,9 +135,7 @@ const AuthController = {
         store_name = rows[0]?.name || null;
       }
 
-      /* =====================================================
-         6️⃣ JWT PAYLOAD
-      ===================================================== */
+      /* ================= JWT ================= */
       const payload = {
         id: user.id,
         owner_id: ownerIdForToken,
@@ -150,9 +156,7 @@ const AuthController = {
         { expiresIn: process.env.JWT_EXPIRE || '7d' }
       );
 
-      /* =====================================================
-         7️⃣ LOG LOGIN (TENANT)
-      ===================================================== */
+      /* ================= LOG ================= */
       if (tenantConn) {
         await ActivityLogModel.create(tenantConn, {
           user_id: user.id,
@@ -173,12 +177,42 @@ const AuthController = {
       console.error('LOGIN ERROR:', err);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan server',
-        error: err.message
+        message: 'Terjadi kesalahan server'
       });
     } finally {
       if (tenantConn) await tenantConn.end();
     }
+  },
+
+  /* =====================================================
+     GET PROFILE (WAJIB ADA)
+  ===================================================== */
+  async getProfile(req, res) {
+    res.json({
+      success: true,
+      user: req.user
+    });
+  },
+
+  /* =====================================================
+     TEST PROTECTED
+  ===================================================== */
+  async testProtected(req, res) {
+    res.json({
+      success: true,
+      message: 'Token valid',
+      user: req.user
+    });
+  },
+
+  /* =====================================================
+     LOGOUT (STATELESS)
+  ===================================================== */
+  async logout(req, res) {
+    res.json({
+      success: true,
+      message: 'Logout berhasil'
+    });
   }
 };
 
