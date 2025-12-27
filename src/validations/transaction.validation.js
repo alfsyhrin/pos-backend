@@ -4,7 +4,7 @@ const Joi = require('joi');
 const transactionItemSchema = Joi.object({
   product_id: Joi.number().required(),
   quantity: Joi.number().integer().min(1).required(),
-  price: Joi.number().min(0).required(), // <-- INI YANG WAJIB, PADAHAL BACKEND SUDAH AMBIL DARI DATABASE
+  // price: Joi.number().min(0).required(), // <-- INI YANG WAJIB, PADAHAL BACKEND SUDAH AMBIL DARI DATABASE
   discount_type: Joi.string().valid('percentage', 'nominal', '', null).allow(null, ''),
   discount_value: Joi.number().min(0).allow(null),
   notes: Joi.string().allow('', null)
