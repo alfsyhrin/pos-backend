@@ -63,16 +63,28 @@ const TransactionController = {
                     return response.badRequest(res, `Insufficient stock for ${product.name}. Available: ${product.stock}`, 400);
                 }
 
-                // Menghitung detail item
+                // Harga produk dari database
                 const itemSubtotal = product.price * item.quantity;
                 let discountAmount = 0;
 
-                // Menambahkan diskon jika ada
+                // --- DISKON DARI FRONTEND (AMAN) ---
+                // Percentage
                 if (item.discount_type === 'percentage' && item.discount_value > 0) {
                     discountAmount = itemSubtotal * (item.discount_value / 100);
-                } else if (item.discount_type === 'nominal' && item.discount_value > 0) {
+                }
+                // Nominal
+                else if (item.discount_type === 'nominal' && item.discount_value > 0) {
                     discountAmount = Math.min(item.discount_value, itemSubtotal);
                 }
+                // Buy X Get Y
+                else if (item.discount_type === 'buyxgety' && item.buy_qty > 0 && item.free_qty > 0) {
+                    // Hitung berapa kali promo berlaku
+                    const promoTimes = Math.floor(item.quantity / (item.buy_qty + item.free_qty));
+                    const freeItems = promoTimes * item.free_qty;
+                    discountAmount = freeItems * product.price;
+                }
+                // Validasi diskon tidak melebihi harga
+                if (discountAmount > itemSubtotal) discountAmount = itemSubtotal;
 
                 const totalAfterDiscount = itemSubtotal - discountAmount;
 
@@ -84,6 +96,8 @@ const TransactionController = {
                     quantity: item.quantity,
                     discount_type: item.discount_type,
                     discount_value: item.discount_value,
+                    buy_qty: item.buy_qty || null,
+                    free_qty: item.free_qty || null,
                     discount_amount: discountAmount,
                     subtotal: itemSubtotal,
                     total_after_discount: totalAfterDiscount,
