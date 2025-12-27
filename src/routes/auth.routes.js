@@ -1,70 +1,88 @@
-const express = require('express');
-const router = express.Router();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const pool = require('../config/db');
+const UserModel = require('../models/user.model');
 
-const AuthController = require('../controllers/auth.controllers');
-const authMiddleware = require('../middleware/auth');
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-/* =====================================================
-   PUBLIC ROUTES
-===================================================== */
+module.exports = {
+  // ================= LOGIN =================
+  async login(req, res) {
+    try {
+      const { username, email, password } = req.body;
 
-// Login (owner / admin / cashier)
-router.post('/login', AuthController.login);
+      let user = null;
 
-/* =====================================================
-   PROTECTED ROUTES (BUTUH TOKEN)
-===================================================== */
+      // Owner login pakai email
+      if (email) {
+        user = await UserModel.findOwnerByEmail(email);
+      }
+      // Admin / Kasir login pakai username
+      else if (username) {
+        const conn = await pool.getConnection();
+        user = await UserModel.findByUsername(conn, username);
+        conn.release();
+      }
 
-// Ambil profile user dari token
-router.get('/profile', authMiddleware(), AuthController.getProfile);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Username / Email tidak ditemukan'
+        });
+      }
 
-// Test token valid
-router.get('/test-protected', authMiddleware(), AuthController.testProtected);
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password salah'
+        });
+      }
 
-// Logout (client-side token invalidate)
-router.post('/logout', authMiddleware(), AuthController.logout);
+      const token = jwt.sign(
+        {
+          id: user.id,
+          owner_id: user.owner_id,
+          store_id: user.store_id,
+          role: user.role
+        },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
 
-/* =====================================================
-   ROLE-BASED ROUTES
-===================================================== */
+      res.json({
+        success: true,
+        token
+      });
 
-// Owner & Admin
-router.get(
-  '/admin-only',
-  authMiddleware(['owner', 'admin']),
-  (req, res) => {
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Login error' });
+    }
+  },
+
+  // ================= PROFILE =================
+  async getProfile(req, res) {
     res.json({
       success: true,
-      message: 'Akses Owner dan Admin',
       user: req.user
     });
-  }
-);
+  },
 
-// Owner saja
-router.get(
-  '/owner-only',
-  authMiddleware(['owner']),
-  (req, res) => {
+  // ================= TEST =================
+  async testProtected(req, res) {
     res.json({
       success: true,
-      message: 'Akses khusus Owner',
+      message: 'Token valid',
       user: req.user
     });
-  }
-);
+  },
 
-// Kasir saja
-router.get(
-  '/cashier-only',
-  authMiddleware(['cashier']),
-  (req, res) => {
+  // ================= LOGOUT =================
+  async logout(req, res) {
     res.json({
       success: true,
-      message: 'Akses khusus Kasir',
-      user: req.user
+      message: 'Logout berhasil'
     });
   }
-);
-
-module.exports = router;
+};
