@@ -11,10 +11,10 @@ const transactionItemSchema = Joi.object({
 });
 
 const createTransactionSchema = Joi.object({
-  user_id: Joi.number().required(),
   payment_type: Joi.string().required(),
   payment_method: Joi.string().required(),
   received_amount: Joi.number().min(0).required(),
+
 
   // ⛔ JANGAN DIVALIDASI
   // total_cost
