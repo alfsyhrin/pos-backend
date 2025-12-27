@@ -26,21 +26,22 @@ const UserController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { search } = req.query; // ambil query search
+            const { search } = req.query;
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Missing db_name in token' });
             conn = await getTenantConnection(dbName);
 
             let users = [];
             if (req.user.role === 'owner') {
-                // Owner: lihat semua user di semua toko miliknya
                 users = await UserModel.findAllByOwner(conn, req.user.owner_id, search);
             } else if (req.user.role === 'admin') {
-                // Admin: hanya lihat user di tokonya sendiri
                 users = await UserModel.findByStore(conn, req.user.store_id, search);
+            } else if (req.user.role === 'cashier') {
+                // Kasir: hanya bisa lihat data dirinya sendiri
+                const user = await UserModel.findById(conn, req.user.id);
+                users = user ? [user] : [];
             } else {
-                // Kasir tidak boleh akses
-                return res.status(403).json({ success: false, message: 'Akses ditolak' });
+                return res.status(403).json({ success: false, message: 'Akses ditolak. Role tidak sesuai.' });
             }
 
             res.json({ success: true, data: users });

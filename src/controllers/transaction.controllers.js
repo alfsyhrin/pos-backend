@@ -102,6 +102,9 @@ const TransactionController = {
             const grandTotal = subtotal + tax - discountTotal;
 
             // Memeriksa pembayaran
+            console.log('DEBUG TRANSAKSI BACKEND:', {
+              subtotal, discountTotal, tax, grandTotal, received_amount, items: processedItems
+            });
             if (received_amount < grandTotal) {
                 return response.badRequest(res, 'Insufficient payment amount', 400);
             }
