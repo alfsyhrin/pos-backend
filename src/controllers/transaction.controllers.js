@@ -31,7 +31,8 @@ const TransactionController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { total_cost, payment_type, payment_method, received_amount, change_amount, items } = req.body;
+            const { payment_type, payment_method, received_amount, items } = req.body;
+
             const dbName = req.user.db_name;
             // Ambil user_id dari JWT/session, bukan dari req.body
             const userId = req.user.id;
@@ -47,8 +48,9 @@ const TransactionController = {
             conn = await getTenantConnection(dbName);
 
             // Verifikasi item transaksi
-            let subtotal = 0;
-            let discountTotal = 0;
+            let grossSubtotal = 0;     // total harga sebelum diskon
+            let discountTotal = 0;    // total diskon
+
             const processedItems = [];
 
             for (const item of items) {
@@ -64,29 +66,22 @@ const TransactionController = {
                 }
 
                 // Harga produk dari database
-                const itemSubtotal = product.price * item.quantity;
+                const itemGross = product.price * item.quantity;
                 let discountAmount = 0;
 
-                // --- DISKON DARI FRONTEND (AMAN) ---
                 // Percentage
                 if (item.discount_type === 'percentage' && item.discount_value > 0) {
-                    discountAmount = itemSubtotal * (item.discount_value / 100);
+                    discountAmount = itemGross * (item.discount_value / 100);
                 }
                 // Nominal
                 else if (item.discount_type === 'nominal' && item.discount_value > 0) {
-                    discountAmount = Math.min(item.discount_value, itemSubtotal);
+                    discountAmount = Math.min(item.discount_value, itemGross);
                 }
-                // Buy X Get Y
-                else if (item.discount_type === 'buyxgety' && item.buy_qty > 0 && item.free_qty > 0) {
-                    // Hitung berapa kali promo berlaku
-                    const promoTimes = Math.floor(item.quantity / (item.buy_qty + item.free_qty));
-                    const freeItems = promoTimes * item.free_qty;
-                    discountAmount = freeItems * product.price;
-                }
-                // Validasi diskon tidak melebihi harga
-                if (discountAmount > itemSubtotal) discountAmount = itemSubtotal;
 
-                const totalAfterDiscount = itemSubtotal - discountAmount;
+                // Safety
+                if (discountAmount > itemGross) discountAmount = itemGross;
+
+                const netSubtotal = itemGross - discountAmount;
 
                 processedItems.push({
                     product_id: product.id,
@@ -96,28 +91,33 @@ const TransactionController = {
                     quantity: item.quantity,
                     discount_type: item.discount_type,
                     discount_value: item.discount_value,
-                    buy_qty: item.buy_qty || null,
-                    free_qty: item.free_qty || null,
                     discount_amount: discountAmount,
-                    subtotal: itemSubtotal,
-                    total_after_discount: totalAfterDiscount,
+                    subtotal: netSubtotal,           // ⬅️ SIMPAN YANG NET
                     notes: item.notes
                 });
 
-                subtotal += itemSubtotal;
+                grossSubtotal += itemGross;
                 discountTotal += discountAmount;
+
             }
 
             // Menghitung total transaksi
             // PATCH: Ambil pajak dari tabel stores
             const [storeRows] = await conn.query('SELECT tax_percentage FROM stores WHERE id = ?', [store_id]);
             const taxPercentage = Number(storeRows[0]?.tax_percentage || 0);
-            const tax = subtotal * (taxPercentage / 100);
-            const grandTotal = subtotal + tax - discountTotal;
+            const netSubtotal = grossSubtotal - discountTotal;
+            const tax = netSubtotal * (taxPercentage / 100);
+            const grandTotal = netSubtotal + tax;
 
             // Memeriksa pembayaran
             console.log('DEBUG TRANSAKSI BACKEND:', {
-              subtotal, discountTotal, tax, grandTotal, received_amount, items: processedItems
+            grossSubtotal,
+            discountTotal,
+            netSubtotal,
+            tax,
+            grandTotal,
+            received_amount,
+            items: processedItems
             });
             if (received_amount < grandTotal) {
                 return response.badRequest(res, 'Insufficient payment amount', 400);
@@ -128,17 +128,15 @@ const TransactionController = {
             // Membuat objek transaksi
             const transaction = {
                 store_id,
-                user_id: userId, // selalu pakai ini
+                user_id: userId,
                 total_cost: grandTotal,
                 payment_type,
                 payment_method,
                 received_amount,
                 change_amount: changeAmountFinal,
                 payment_status: 'paid',
-                items: processedItems,
-                subtotal,
+                subtotal: netSubtotal,
                 discount_total: discountTotal,
-                grand_total: grandTotal,
                 tax,
                 tax_percentage: taxPercentage
             };
@@ -164,7 +162,7 @@ const TransactionController = {
                   user_id: req.user.id,
                   store_id: req.params.store_id,
                   action: 'transaction',
-                  detail: `Transaksi baru, total: Rp${total_cost}`
+                  detail: `Transaksi baru, total: Rp${grandTotal}`
                 });
 
                 return response.created(res, mapped, 'Transaction created successfully');
@@ -231,27 +229,25 @@ const TransactionController = {
     },
 
     // Update transaksi
+    // Update transaksi (hanya metadata, bukan nilai)
     async update(req, res) {
         let conn;
         try {
             const { store_id, id } = req.params;
-            const { total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = req.body;
+            const { payment_type, payment_method, payment_status } = req.body;
+
             const dbName = req.user.db_name;
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
             const transactionId = parseInt(id);
-
             if (isNaN(transactionId)) {
                 return response.badRequest(res, 'ID transaksi tidak valid');
             }
 
             const isUpdated = await TransactionModel.update(conn, transactionId, store_id, {
-                total_cost,
                 payment_type,
                 payment_method,
-                received_amount,
-                change_amount,
                 payment_status
             });
 
