@@ -201,7 +201,7 @@ CREATE TABLE `subscriptions` (
 CREATE TABLE `transactions` (
   `id` int(11) NOT NULL,
   `store_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `total_cost` decimal(10,2) NOT NULL,
   `payment_type` varchar(50) DEFAULT NULL,
   `payment_method` varchar(50) DEFAULT NULL,
@@ -476,3 +476,9 @@ ALTER TABLE `transaction_items`
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+ALTER TABLE transactions MODIFY user_id INT NULL;
+ALTER TABLE transactions DROP FOREIGN KEY transactions_ibfk_2;
+ALTER TABLE transactions
+  ADD CONSTRAINT transactions_ibfk_2
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;

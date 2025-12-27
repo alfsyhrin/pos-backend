@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   store_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER,
   total_cost REAL NOT NULL,
   payment_type TEXT,
   payment_method TEXT,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   role TEXT,
   is_owner INTEGER DEFAULT 0,
   FOREIGN KEY(store_id) REFERENCES stores(id),
-  FOREIGN KEY(user_id) REFERENCES users(id)
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Tabel transaction_items
