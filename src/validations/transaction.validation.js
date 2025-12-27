@@ -13,7 +13,7 @@ const transactionItemSchema = Joi.object({
 // Validasi untuk pembuatan transaksi baru
 const createTransactionSchema = Joi.object({
   user_id: Joi.number().required(),
-  total_cost: Joi.number().min(0).required(),
+  // total_cost: Joi.number().min(0).required(), // <-- HAPUS atau jadikan opsional
   payment_type: Joi.string().required(),
   payment_method: Joi.string().required(),
   received_amount: Joi.number().min(0).required(),
@@ -31,7 +31,7 @@ const createTransactionSchema = Joi.object({
 
 // Validasi untuk update transaksi (opsional, bisa disesuaikan)
 const updateTransactionSchema = Joi.object({
-  total_cost: Joi.number().min(0),
+  total_cost: Joi.number().min(0).optional(),
   payment_type: Joi.string(),
   payment_method: Joi.string(),
   received_amount: Joi.number().min(0),
