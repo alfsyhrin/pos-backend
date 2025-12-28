@@ -77,6 +77,12 @@ const TransactionController = {
                 else if (item.discount_type === 'nominal' && item.discount_value > 0) {
                     discountAmount = Math.min(item.discount_value, itemGross);
                 }
+                // Buy X Get Y
+                else if (item.discount_type === 'buyxgety' && item.buy_qty > 0 && item.free_qty > 0) {
+                    const promoTimes = Math.floor(item.quantity / (item.buy_qty + item.free_qty));
+                    const freeItems = promoTimes * item.free_qty;
+                    discountAmount = freeItems * product.price;
+                }
 
                 // Safety
                 if (discountAmount > itemGross) discountAmount = itemGross;
