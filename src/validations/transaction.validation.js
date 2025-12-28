@@ -4,9 +4,11 @@ const transactionItemSchema = Joi.object({
   product_id: Joi.number().required(),
   quantity: Joi.number().integer().min(1).required(),
   discount_type: Joi.string()
-    .valid('percentage', 'nominal')
+    .valid('percentage', 'nominal', 'buyxgety')
     .allow(null),
   discount_value: Joi.number().min(0).allow(null),
+  buy_qty: Joi.number().integer().min(1).allow(null),
+  free_qty: Joi.number().integer().min(1).allow(null),
   notes: Joi.string().allow('', null)
 });
 
