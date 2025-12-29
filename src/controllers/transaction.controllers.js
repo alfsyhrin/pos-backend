@@ -83,10 +83,10 @@ const TransactionController = {
                     const y = item.free_qty;
                     const totalQty = item.quantity;
                     const groupQty = x + y;
-                    const promoTimes = Math.floor(totalQty / groupQty);
-                    const bonusQty = promoTimes * y;
-                    const paidQty = totalQty - bonusQty;
-                    discountAmount = bonusQty * product.price;
+                    // Paid qty = (totalQty ~/ (x + y)) * x + (totalQty % (x + y))
+                    const paidQty = Math.floor(totalQty / groupQty) * x + (totalQty % groupQty);
+                    // Bonus qty = totalQty - paidQty
+                    discountAmount = (totalQty - paidQty) * product.price;
                     // Subtotal yang dibayar = paidQty * product.price
                 }
 
