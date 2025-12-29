@@ -24,10 +24,10 @@ router.put('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkT
 router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, ProductController.delete);
 
 // Get Low Stock Products (protected route)
-router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin']), checkTenant, ProductController.getLowStock);
+router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getLowStock);
 
 // Statistik produk
-router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin']), checkTenant, ProductController.getStats);
+router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getStats);
 
 // Find Product by Barcode (protected route)
 router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.findByBarcode);

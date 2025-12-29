@@ -70,7 +70,7 @@ router.put(
 // Delete Transaction (protected route)
 router.delete(
   '/:store_id/transactions/:transaction_id',
-  authMiddleware(['owner', 'admin', 'cashier']),
+  authMiddleware(['owner', 'admin']),
   checkTenant,
   TransactionController.delete
 );

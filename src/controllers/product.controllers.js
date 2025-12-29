@@ -431,7 +431,18 @@ async update(req, res) {
       conn = await getTenantConnection(dbName);
 
       const lowStockProducts = await ProductModel.getLowStock(conn, storeId, threshold);
-      return response.success(res, { products: lowStockProducts, count: lowStockProducts.length, threshold }, 'Produk dengan stok rendah');
+      const safeProducts = lowStockProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        barcode: p.barcode,
+        stock: p.stock,
+        category: p.category,
+        image_url: p.image_url,
+        price: p.price,
+        // Jangan kirim cost_price ke kasir!
+      }));
+      return response.success(res, { products: safeProducts, count: safeProducts.length, threshold }, 'Produk dengan stok rendah');
     } catch (error) {
       return response.error(res, 'Terjadi kesalahan saat mengambil produk stok rendah', 500, error);
     } finally {
