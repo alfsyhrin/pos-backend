@@ -167,7 +167,10 @@ const StoreController = {
             const { name, address, phone, receipt_template, tax_percentage } = req.body;
             const storeId = parseInt(id);
             if (isNaN(storeId)) return response.badRequest(res, 'ID toko tidak valid');
-            if (!name || name.trim() === '') return response.badRequest(res, 'Nama toko harus diisi');
+            
+            // PATCH: Validasi name hanya jika dikirim
+            if (name !== undefined && name.trim() === '') 
+                return response.badRequest(res, 'Nama toko harus diisi');
 
             const storeExists = await StoreModel.findById(conn, storeId, owner_id);
             if (!storeExists) return response.notFound(res, 'Toko tidak ditemukan');
@@ -177,11 +180,11 @@ const StoreController = {
             }
 
             const updateData = {
-                name: name.trim(),
-                address: address ? address.trim() : null,
-                phone: phone ? phone.trim() : null,
-                receipt_template: receipt_template ? receipt_template.trim() : null,
-                tax_percentage: tax_percentage !== undefined ? tax_percentage : null
+                name: name ? name.trim() : undefined,
+                address: address ? address.trim() : undefined,
+                phone: phone ? phone.trim() : undefined,
+                receipt_template: receipt_template ? receipt_template.trim() : undefined,
+                tax_percentage: tax_percentage !== undefined ? tax_percentage : undefined
             };
 
             const isUpdated = await StoreModel.update(conn, storeId, owner_id, updateData);
