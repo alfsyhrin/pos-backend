@@ -53,6 +53,19 @@ const TransactionController = {
 
             const processedItems = [];
 
+            // Map promoType ke discount_type jika discount_type null
+            for (const item of items) {
+                if ((!item.discount_type || item.discount_type === null) && item.promoType) {
+                    item.discount_type = item.promoType;
+                }
+                if (item.buyQty !== undefined && item.buy_qty === undefined) {
+                    item.buy_qty = item.buyQty;
+                }
+                if (item.freeQty !== undefined && item.free_qty === undefined) {
+                    item.free_qty = item.freeQty;
+                }
+            }
+
             for (const item of items) {
                 // Mendapatkan detail produk
                 const product = await ProductModel.findById(conn, item.product_id, store_id);
