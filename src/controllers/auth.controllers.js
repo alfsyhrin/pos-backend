@@ -192,9 +192,22 @@ async login(req, res) {
      GET PROFILE (WAJIB ADA)
   ===================================================== */
   async getProfile(req, res) {
+    // Pastikan email selalu ada di response
     res.json({
       success: true,
-      user: req.user
+      user: {
+        id: req.user.id,
+        owner_id: req.user.owner_id,
+        store_id: req.user.store_id,
+        role: req.user.role,
+        username: req.user.username,
+        email: req.user.email, // <-- tambahkan ini
+        db_name: req.user.db_name,
+        plan: req.user.plan,
+        business_name: req.user.business_name,
+        store_name: req.user.store_name,
+        stores: req.user.stores
+      }
     });
   },
 
