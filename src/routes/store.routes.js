@@ -13,7 +13,7 @@ router.get('/', authMiddleware(['owner', 'admin']), checkTenant, StoreController
 router.get('/search', authMiddleware(['owner', 'admin']), checkTenant, StoreController.search);
 
 // GET /api/stores/:id - Get single store
-router.get('/:id', authMiddleware(['owner', 'admin', 'kasir']), checkTenant, StoreController.getById);
+router.get('/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, StoreController.getById);
 
 // POST /api/stores - Create new store (owner only)
 router.post('/', authMiddleware(['owner']), checkTenant, StoreController.create);
