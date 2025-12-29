@@ -79,9 +79,15 @@ const TransactionController = {
                 }
                 // Buy X Get Y
                 else if (item.discount_type === 'buyxgety' && item.buy_qty > 0 && item.free_qty > 0) {
-                    const promoTimes = Math.floor(item.quantity / (item.buy_qty + item.free_qty));
-                    const freeItems = promoTimes * item.free_qty;
-                    discountAmount = freeItems * product.price;
+                    const x = item.buy_qty;
+                    const y = item.free_qty;
+                    const totalQty = item.quantity;
+                    const groupQty = x + y;
+                    const promoTimes = Math.floor(totalQty / groupQty);
+                    const bonusQty = promoTimes * y;
+                    const paidQty = totalQty - bonusQty;
+                    discountAmount = bonusQty * product.price;
+                    // Subtotal yang dibayar = paidQty * product.price
                 }
 
                 // Safety
