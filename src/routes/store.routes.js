@@ -19,7 +19,7 @@ router.get('/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, S
 router.post('/', authMiddleware(['owner']), checkTenant, StoreController.create);
 
 // PUT /api/stores/:id - Update store (owner only)
-router.put('/:id', authMiddleware(['owner']), checkTenant, StoreController.update);
+router.put('/:id', authMiddleware(['owner', 'admin']), checkTenant, StoreController.update);
 
 // DELETE /api/stores/:id - Delete store (owner only)
 router.delete('/:id', authMiddleware(['owner']), checkTenant, StoreController.delete);
@@ -35,7 +35,7 @@ router.get('/:store_id/receipt-template', authMiddleware(['owner', 'admin']), ch
 
 // Info bisnis (owner only)
 router.get('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.getBusinessProfile);
-router.put('/business-profile', authMiddleware(['owner']), checkTenant, StoreController.updateBusinessProfile);
+router.put('/business-profile', authMiddleware(['owner', 'admin']), checkTenant, StoreController.updateBusinessProfile);
 
 // Get store by ID
 router.get('/:store_id', authMiddleware(), checkTenant, StoreController.getStore);
