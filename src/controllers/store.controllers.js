@@ -155,62 +155,67 @@ const StoreController = {
     },
 
     // Update store
-    async update(req, res) {
-        let conn;
-        try {
-            const { id } = req.params;
-            const owner_id = req.user.owner_id;
-            const dbName = req.user.db_name;
-            if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
-            conn = await getTenantConnection(dbName);
+// ...existing code...
+async update(req, res) {
+    let conn;
+    try {
+        const { id } = req.params;
+        const owner_id = req.user.owner_id;
+        const dbName = req.user.db_name;
+        if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
+        conn = await getTenantConnection(dbName);
 
-            const { name, address, phone, receipt_template, tax_percentage } = req.body;
-            const storeId = parseInt(id);
-            if (isNaN(storeId)) return response.badRequest(res, 'ID toko tidak valid');
-            
-            // PATCH: Validasi name hanya jika dikirim
-            if (name !== undefined && name.trim() === '') 
-                return response.badRequest(res, 'Nama toko harus diisi');
+        // PATCH: Mapping business_name ke name
+        let { name, business_name, address, phone, receipt_template, tax_percentage } = req.body;
+        if (!name && business_name) name = business_name;
 
-            const storeExists = await StoreModel.findById(conn, storeId, owner_id);
-            if (!storeExists) return response.notFound(res, 'Toko tidak ditemukan');
+        const storeId = parseInt(id);
+        if (isNaN(storeId)) return response.badRequest(res, 'ID toko tidak valid');
+        if (name !== undefined && name.trim() === '') return response.badRequest(res, 'Nama toko harus diisi');
 
-            if (req.user.role !== 'owner' && req.user.store_id !== storeId) {
-                return response.forbidden(res, 'Anda tidak memiliki akses untuk mengupdate toko ini');
-            }
+        const storeExists = await StoreModel.findById(conn, storeId, owner_id);
+        if (!storeExists) return response.notFound(res, 'Toko tidak ditemukan');
 
-            const updateData = {
-                name: name ? name.trim() : undefined,
-                address: address ? address.trim() : undefined,
-                phone: phone ? phone.trim() : undefined,
-                receipt_template: receipt_template ? receipt_template.trim() : undefined,
-                tax_percentage: tax_percentage !== undefined ? tax_percentage : undefined
-            };
-
-            const isUpdated = await StoreModel.update(conn, storeId, owner_id, updateData);
-            if (!isUpdated) return response.error(res, 'Gagal mengupdate toko', 400);
-
-            const updatedStore = await StoreModel.findById(conn, storeId, owner_id);
-
-            // Setelah update pengaturan toko
-            await ActivityLogModel.create(conn, {
-                user_id: req.user.id,
-                store_id: req.params.store_id,
-                action: 'update_setting',
-                detail: 'Update pengaturan toko'
-            });
-
-            return response.success(res, updatedStore, 'Toko berhasil diupdate');
-        } catch (error) {
-            console.error('Update store error:', error);
-            if (error.code === 'ER_DUP_ENTRY') {
-                return response.badRequest(res, 'Nama toko sudah digunakan untuk owner ini');
-            }
-            return response.error(res, 'Terjadi kesalahan saat mengupdate toko', 500, error);
-        } finally {
-            if (conn) await conn.end();
+        if (req.user.role !== 'owner' && req.user.store_id !== storeId) {
+            return response.forbidden(res, 'Anda tidak memiliki akses untuk mengupdate toko ini');
         }
-    },
+
+        // PATCH: Hanya update field yang ada di tabel
+        const updateData = {};
+        if (name !== undefined) updateData.name = name.trim();
+        if (address !== undefined) updateData.address = address.trim();
+        if (phone !== undefined) updateData.phone = phone.trim();
+        if (receipt_template !== undefined) updateData.receipt_template = receipt_template.trim();
+        if (tax_percentage !== undefined) updateData.tax_percentage = tax_percentage;
+
+        if (Object.keys(updateData).length === 0) {
+            return response.badRequest(res, 'Tidak ada data yang diupdate');
+        }
+
+        const isUpdated = await StoreModel.update(conn, storeId, owner_id, updateData);
+        if (!isUpdated) return response.error(res, 'Gagal mengupdate toko', 400);
+
+        const updatedStore = await StoreModel.findById(conn, storeId, owner_id);
+
+        await ActivityLogModel.create(conn, {
+            user_id: req.user.id,
+            store_id: req.params.store_id,
+            action: 'update_setting',
+            detail: 'Update pengaturan toko'
+        });
+
+        return response.success(res, updatedStore, 'Toko berhasil diupdate');
+    } catch (error) {
+        console.error('Update store error:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return response.badRequest(res, 'Nama toko sudah digunakan untuk owner ini');
+        }
+        return response.error(res, 'Terjadi kesalahan saat mengupdate toko', 500, error);
+    } finally {
+        if (conn) await conn.end();
+    }
+},
+// ...existing code...
 
     // Delete store
     async delete(req, res) {
