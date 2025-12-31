@@ -241,7 +241,7 @@ CREATE TABLE `transaction_items` (
   `id` int(11) NOT NULL,
   `transaction_id` int(11) NOT NULL,
   `product_name` VARCHAR(255) DEFAULT NULL,
-  `product_id` int(11) NOT NULL,
+  `product_id` int(11) DEFAULT NULL,
   `qty` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `subtotal` decimal(10,2) NOT NULL
