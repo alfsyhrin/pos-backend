@@ -217,7 +217,7 @@ CREATE TABLE `transactions` (
   `tax_percentage` DECIMAL(5,2) DEFAULT 0,
   `role` VARCHAR(20),
   `is_owner` BOOLEAN,
-  PRIMARY KEY (`id`
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
