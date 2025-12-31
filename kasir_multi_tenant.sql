@@ -136,6 +136,7 @@ CREATE TABLE `stores` (
   `type` VARCHAR(32) NOT NULL DEFAULT 'store',
   `owner_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
+  `business_name` varchar(150) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `receipt_template` text DEFAULT NULL,
@@ -161,7 +162,7 @@ CREATE TABLE `stores` (
 
 CREATE TABLE `struck_receipt` (
   `id` int(11) NOT NULL,
-  `store_id` int(11) NOT NULL,
+  `store_id` int(11) NULL,
   `template_name` varchar(100) NOT NULL,
   `template_data` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -239,6 +240,7 @@ CREATE TABLE `transactions` (
 CREATE TABLE `transaction_items` (
   `id` int(11) NOT NULL,
   `transaction_id` int(11) NOT NULL,
+  `product_name` VARCHAR(255) DEFAULT NULL,
   `product_id` int(11) NOT NULL,
   `qty` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
