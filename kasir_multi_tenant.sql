@@ -246,7 +246,9 @@ CREATE TABLE `transaction_items` (
   `qty` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `subtotal` decimal(10,2) NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `transaction_id` (`transaction_id`),
+  KEY `product_id` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -348,11 +350,12 @@ ALTER TABLE `transactions`
   ADD KEY `user_id` (`user_id`);
 
 --
+--
 -- Indeks untuk tabel `transaction_items`
 --
-ALTER TABLE `transaction_items`
-  ADD KEY `transaction_id` (`transaction_id`),
-  ADD KEY `product_id` (`product_id`);
+-- ALTER TABLE `transaction_items`
+--   ADD KEY `transaction_id` (`transaction_id`),
+--   ADD KEY `product_id` (`product_id`);
 
 --
 -- Indeks untuk tabel `users`
