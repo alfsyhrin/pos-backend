@@ -201,7 +201,7 @@ CREATE TABLE `subscriptions` (
 
 CREATE TABLE `transactions` (
   `id` int(11) NOT NULL,
-  `store_id` int(11) NOT NULL,
+  `store_id` int(11) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   `total_cost` decimal(10,2) NOT NULL,
   `payment_type` varchar(50) DEFAULT NULL,
