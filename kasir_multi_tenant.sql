@@ -200,7 +200,7 @@ CREATE TABLE `subscriptions` (
 --
 
 CREATE TABLE `transactions` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `store_id` int(11) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   `total_cost` decimal(10,2) NOT NULL,
@@ -216,7 +216,8 @@ CREATE TABLE `transactions` (
   `tax` DECIMAL(12,2) DEFAULT 0,
   `tax_percentage` DECIMAL(5,2) DEFAULT 0,
   `role` VARCHAR(20),
-  `is_owner` BOOLEAN
+  `is_owner` BOOLEAN,
+  PRIMARY KEY (`id`
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -238,13 +239,14 @@ CREATE TABLE `transactions` (
 --
 
 CREATE TABLE `transaction_items` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `transaction_id` int(11) NOT NULL,
   `product_name` VARCHAR(255) DEFAULT NULL,
   `product_id` int(11) DEFAULT NULL,
   `qty` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
-  `subtotal` decimal(10,2) NOT NULL
+  `subtotal` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -342,7 +344,7 @@ ALTER TABLE `subscriptions`
 -- Indeks untuk tabel `transactions`
 --
 ALTER TABLE `transactions`
-  ADD PRIMARY KEY (`id`),
+  -- ADD PRIMARY KEY (`id`),
   ADD KEY `store_id` (`store_id`),
   ADD KEY `user_id` (`user_id`);
 
@@ -350,7 +352,7 @@ ALTER TABLE `transactions`
 -- Indeks untuk tabel `transaction_items`
 --
 ALTER TABLE `transaction_items`
-  ADD PRIMARY KEY (`id`),
+  -- ADD PRIMARY KEY (`id`),
   ADD KEY `transaction_id` (`transaction_id`),
   ADD KEY `product_id` (`product_id`);
 
@@ -406,14 +408,14 @@ ALTER TABLE `subscriptions`
 --
 -- AUTO_INCREMENT untuk tabel `transactions`
 --
-ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+-- ALTER TABLE `transactions`
+--   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
---
--- AUTO_INCREMENT untuk tabel `transaction_items`
---
-ALTER TABLE `transaction_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+-- --
+-- -- AUTO_INCREMENT untuk tabel `transaction_items`
+-- --
+-- ALTER TABLE `transaction_items`
+--   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
@@ -471,8 +473,8 @@ ALTER TABLE `users`
   ADD CONSTRAINT `users_ibfk_2` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE SET NULL;
 COMMIT;
 
-ALTER TABLE `transaction_items`
-  ADD COLUMN `product_name` VARCHAR(255) DEFAULT NULL AFTER `product_id`;
+-- ALTER TABLE `transaction_items`
+--   ADD COLUMN `product_name` VARCHAR(255) DEFAULT NULL AFTER `product_id`;
 
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
