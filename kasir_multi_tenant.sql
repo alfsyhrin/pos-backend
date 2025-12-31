@@ -481,8 +481,8 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
-ALTER TABLE transactions MODIFY user_id INT NULL;
-ALTER TABLE transactions DROP FOREIGN KEY transactions_ibfk_2;
-ALTER TABLE transactions
-  ADD CONSTRAINT transactions_ibfk_2
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+-- ALTER TABLE transactions MODIFY user_id INT NULL;
+-- ALTER TABLE transactions DROP FOREIGN KEY transactions_ibfk_2;
+-- ALTER TABLE transactions
+--   ADD CONSTRAINT transactions_ibfk_2
+--   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
