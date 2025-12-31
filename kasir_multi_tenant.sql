@@ -222,7 +222,7 @@ CREATE TABLE `transactions` (
 --
 -- Dumping data untuk tabel `transactions`
 --
-
+--test
 -- INSERT INTO `transactions` (`id`, `store_id`, `user_id`, `total_cost`, `payment_type`, `payment_method`, `received_amount`, `change_amount`, `customer_name`, `customer_phone`, `payment_status`, `created_at`, `updated_at`) VALUES
 -- (2, 2, 4, 100000.00, 'cash', 'manual', 200000.00, 100000.00, NULL, NULL, 'pending', '2025-12-15 06:11:38', '2025-12-15 06:11:38'),
 -- (3, 2, 4, 100000.00, 'cash', 'manual', 200000.00, 100000.00, NULL, NULL, 'pending', '2025-12-15 06:12:07', '2025-12-15 06:12:07'),
