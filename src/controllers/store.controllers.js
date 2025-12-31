@@ -197,12 +197,16 @@ async update(req, res) {
 
         const updatedStore = await StoreModel.findById(conn, storeId, owner_id);
 
-        await ActivityLogModel.create(conn, {
-            user_id: req.user.id,
-            store_id: req.params.store_id,
-            action: 'update_setting',
-            detail: 'Update pengaturan toko'
-        });
+        try {
+            await ActivityLogModel.create(conn, {
+                user_id: req.user.id,
+                store_id: storeId,
+                action: 'update_setting',
+                detail: 'Update pengaturan toko'
+            });
+        } catch (logErr) {
+            console.warn('⚠️ Activity log gagal:', logErr.message);
+        }
 
         return response.success(res, updatedStore, 'Toko berhasil diupdate');
     } catch (error) {
