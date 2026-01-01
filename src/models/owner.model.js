@@ -1,4 +1,5 @@
 // src/models/owner.model.js
+// src/models/owner.model.js
 const OwnerModel = {
   async getById(conn, id) {
     const [rows] = await conn.execute(
@@ -7,12 +8,31 @@ const OwnerModel = {
     );
     return rows[0] || null;
   },
+
   async updateById(conn, id, data) {
-    const { business_name, email, phone, address } = data;
-    await conn.execute(
-      'UPDATE owners SET business_name=?, email=?, phone=?, address=? WHERE id=?',
-      [business_name, email, phone, address, id]
-    );
+    const fields = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+
+    // Tidak ada field yang diupdate → hentikan
+    if (!fields.length) return;
+
+    values.push(id);
+
+    const sql = `
+      UPDATE owners
+      SET ${fields.join(', ')}
+      WHERE id = ?
+    `;
+
+    await conn.execute(sql, values);
   }
 };
+
 module.exports = OwnerModel;
