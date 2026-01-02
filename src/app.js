@@ -18,6 +18,7 @@ const backupRoutes = require('./routes/backup.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const ownerRoutes = require('./routes/owner.routes');
+const syncRoutes = require('./routes/sync.routes');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/backup', backupRoutes);
 app.use('/api', activityLogRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', ownerRoutes);
+app.use('/sync', syncRoutes);
 
 // Default route
 app.get('/', (req, res) => {
