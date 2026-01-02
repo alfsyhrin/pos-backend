@@ -99,12 +99,28 @@ const TransactionModel = {
 
         query += ` ORDER BY t.created_at DESC`;
 
-        if (filters.limit) {
+        // Perbaikan blok LIMIT & OFFSET
+        if (
+            filters.limit !== undefined &&
+            filters.limit !== null &&
+            filters.limit !== '' &&
+            !isNaN(Number(filters.limit)) &&
+            Number(filters.limit) > 0
+        ) {
+            const limitVal = Number(filters.limit);
             query += ` LIMIT ?`;
-            params.push(Number(filters.limit));
-            if (filters.offset) {
+            params.push(limitVal);
+
+            if (
+                filters.offset !== undefined &&
+                filters.offset !== null &&
+                filters.offset !== '' &&
+                !isNaN(Number(filters.offset)) &&
+                Number(filters.offset) >= 0
+            ) {
+                const offsetVal = Number(filters.offset);
                 query += ` OFFSET ?`;
-                params.push(Number(filters.offset));
+                params.push(offsetVal);
             }
         }
 
