@@ -229,13 +229,12 @@ const TransactionController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { payment_status, search, date, start_date, end_date } = req.query;
+            const { payment_status, search, date, start_date, end_date, limit, offset } = req.query;
             const dbName = req.user.db_name;
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            // Kirim filter baru ke model, tanpa limit/offset
-            const filters = { payment_status, search, date, start_date, end_date };
+            const filters = { payment_status, search, date, start_date, end_date, limit, offset };
 
             const transactions = await TransactionModel.findAllByStore(conn, store_id, filters);
 

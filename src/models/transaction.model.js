@@ -99,6 +99,15 @@ const TransactionModel = {
 
         query += ` ORDER BY t.created_at DESC`;
 
+        if (filters.limit) {
+            query += ` LIMIT ?`;
+            params.push(Number(filters.limit));
+            if (filters.offset) {
+                query += ` OFFSET ?`;
+                params.push(Number(filters.offset));
+            }
+        }
+
         const [rows] = await db.execute(query, params);
         return rows;
     },

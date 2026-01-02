@@ -2,6 +2,8 @@ const { getTenantConnection } = require('../config/db');
 const ActivityLogModel = require('../models/activityLog.model');
 const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
+const csvParse = require('csv-parse/lib/sync');
+const XLSX = require('xlsx');
 
 function toMySQLDatetime(dt) {
   if (!dt) return null;
@@ -126,13 +128,44 @@ exports.importData = async (req, res) => {
     if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
     conn = await getTenantConnection(dbName);
 
-    // Ambil file JSON dari upload
     if (!req.file) return res.status(400).json({ success: false, message: 'File backup tidak ditemukan' });
+
     let data;
-    try {
-      data = JSON.parse(req.file.buffer.toString());
-    } catch (e) {
-      return res.status(400).json({ success: false, message: 'Format file tidak valid (bukan JSON)' });
+    const mimetype = req.file.mimetype;
+    const originalname = req.file.originalname.toLowerCase();
+
+    // === JSON ===
+    if (originalname.endsWith('.json')) {
+      try {
+        data = JSON.parse(req.file.buffer.toString());
+      } catch (e) {
+        return res.status(400).json({ success: false, message: 'Format file tidak valid (bukan JSON)' });
+      }
+    }
+    // === CSV ===
+    else if (originalname.endsWith('.csv')) {
+      // Asumsi: CSV hanya untuk satu tabel (products, users, atau transactions)
+      const csvRows = csvParse(req.file.buffer.toString(), { columns: true, skip_empty_lines: true });
+      // Deteksi tipe dari nama file
+      if (originalname.includes('product')) data = { products: csvRows };
+      else if (originalname.includes('user')) data = { users: csvRows };
+      else if (originalname.includes('transaction_item')) data = { transaction_items: csvRows };
+      else data = { transactions: csvRows };
+    }
+    // === Excel/XLSX ===
+    else if (originalname.endsWith('.xlsx') || originalname.endsWith('.xls')) {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      data = {};
+      workbook.SheetNames.forEach(sheetName => {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        if (sheetName.toLowerCase().includes('product')) data.products = rows;
+        else if (sheetName.toLowerCase().includes('user')) data.users = rows;
+        else if (sheetName.toLowerCase().includes('transaction_item')) data.transaction_items = rows;
+        else if (sheetName.toLowerCase().includes('transaction')) data.transactions = rows;
+      });
+    }
+    else {
+      return res.status(400).json({ success: false, message: 'Format file tidak didukung (hanya .json, .csv, .xlsx)' });
     }
 
     // Import users
