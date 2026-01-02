@@ -237,4 +237,46 @@ router.get('/owners', async (req, res) => {
   }
 });
 
+// Sinkronisasi laporan harian dari lokal ke server (bulk insert/update)
+router.post('/reports_daily', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const reports = Array.isArray(req.body) ? req.body : [req.body];
+    for (const r of reports) {
+      await conn.execute(
+        `INSERT INTO reports_daily
+          (id, store_id, report_date, total_transactions, total_income, total_discount, net_revenue, total_hpp, gross_profit, operational_cost, net_profit, margin, best_sales_day, lowest_sales_day, avg_daily, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           store_id=VALUES(store_id), report_date=VALUES(report_date), total_transactions=VALUES(total_transactions),
+           total_income=VALUES(total_income), total_discount=VALUES(total_discount), net_revenue=VALUES(net_revenue),
+           total_hpp=VALUES(total_hpp), gross_profit=VALUES(gross_profit), operational_cost=VALUES(operational_cost),
+           net_profit=VALUES(net_profit), margin=VALUES(margin), best_sales_day=VALUES(best_sales_day),
+           lowest_sales_day=VALUES(lowest_sales_day), avg_daily=VALUES(avg_daily), created_at=VALUES(created_at)`,
+        [
+          r.id, r.store_id, r.report_date, r.total_transactions, r.total_income, r.total_discount,
+          r.net_revenue, r.total_hpp, r.gross_profit, r.operational_cost, r.net_profit, r.margin,
+          r.best_sales_day, r.lowest_sales_day, r.avg_daily, r.created_at
+        ]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// Sinkronisasi laporan harian dari server ke lokal
+router.get('/reports_daily', async (req, res) => {
+  try {
+    const { store_id } = req.query;
+    const [rows] = await pool.execute('SELECT * FROM reports_daily WHERE store_id = ?', [store_id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
