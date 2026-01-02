@@ -19,7 +19,7 @@ const ReportController = {
             COALESCE(SUM(total_cost),0) AS total_pendapatan,
             0 AS total_diskon
          FROM transactions
-         WHERE store_id = ? AND created_at BETWEEN ? AND ?`,
+         WHERE store_id = ? AND DATE(created_at) BETWEEN ? AND ?`,
         [store_id, start, end]
       );
 
@@ -29,7 +29,7 @@ const ReportController = {
          FROM transaction_items ti
          JOIN products p ON ti.product_id = p.id
          JOIN transactions t ON ti.transaction_id = t.id
-         WHERE t.store_id = ? AND t.created_at BETWEEN ? AND ?`,
+         WHERE t.store_id = ? AND DATE(t.created_at) BETWEEN ? AND ?`,
         [store_id, start, end]
       );
       const total_hpp = hppRows[0].total_hpp || 0;
@@ -38,7 +38,7 @@ const ReportController = {
       const [dailyStats] = await conn.query(
         `SELECT DATE(created_at) as day, SUM(total_cost) as total
          FROM transactions
-         WHERE store_id = ? AND created_at BETWEEN ? AND ?
+         WHERE store_id = ? AND DATE(created_at) BETWEEN ? AND ?
          GROUP BY day`,
         [store_id, start, end]
       );
