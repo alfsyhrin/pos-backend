@@ -2,7 +2,7 @@ const { getTenantConnection } = require('../config/db');
 const ActivityLogModel = require('../models/activityLog.model');
 const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
-const csvParse = require('csv-parse/lib/sync');
+const { parse } = require('csv-parse/sync'); // perbaiki import
 const XLSX = require('xlsx');
 
 function toMySQLDatetime(dt) {
@@ -145,7 +145,7 @@ exports.importData = async (req, res) => {
     // === CSV ===
     else if (originalname.endsWith('.csv')) {
       // Asumsi: CSV hanya untuk satu tabel (products, users, atau transactions)
-      const csvRows = csvParse(req.file.buffer.toString(), { columns: true, skip_empty_lines: true });
+      const csvRows = parse(req.file.buffer.toString(), { columns: true, skip_empty_lines: true });
       // Deteksi tipe dari nama file
       if (originalname.includes('product')) data = { products: csvRows };
       else if (originalname.includes('user')) data = { users: csvRows };
