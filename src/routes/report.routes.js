@@ -9,8 +9,18 @@ router.get('/:store_id/reports/summary', authMiddleware(['owner', 'admin']), che
 
 // Laporan produk (top produk, stok menipis)
 router.get('/:store_id/reports/products', authMiddleware(['owner', 'admin']), checkTenant, ReportController.products);
-
-// Laporan kasir/karyawan
 router.get('/:store_id/reports/cashiers', authMiddleware(['owner', 'admin']), checkTenant, ReportController.cashiers);
+
+// Generate & simpan laporan harian (manual/cron)
+router.post('/:store_id/reports/daily/generate', authMiddleware(['owner', 'admin']), checkTenant, ReportController.generateDailyReport);
+
+// Ambil laporan harian yang sudah disimpan
+router.get('/:store_id/reports/daily', authMiddleware(['owner', 'admin']), checkTenant, ReportController.getDailyReport);
+
+// List laporan harian dalam rentang waktu
+router.get('/:store_id/reports/daily/list', authMiddleware(['owner', 'admin']), checkTenant, ReportController.listDailyReports);
+
+// Laporan periodik (mingguan/bulanan/tahunan)
+router.get('/:store_id/reports/periodic', authMiddleware(['owner', 'admin']), checkTenant, ReportController.periodicReport);
 
 module.exports = router;

@@ -183,6 +183,30 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
+-- Table: reports_daily
+-- --------------------------------------------------------
+CREATE TABLE reports_daily (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  store_id INT(11) NOT NULL,
+  report_date DATE NOT NULL,
+  total_transactions INT DEFAULT 0,
+  total_income DECIMAL(18,2) DEFAULT 0,
+  total_discount DECIMAL(18,2) DEFAULT 0,
+  net_revenue DECIMAL(18,2) DEFAULT 0,
+  total_hpp DECIMAL(18,2) DEFAULT 0,
+  gross_profit DECIMAL(18,2) DEFAULT 0,
+  operational_cost DECIMAL(18,2) DEFAULT 0,
+  net_profit DECIMAL(18,2) DEFAULT 0,
+  margin VARCHAR(10) DEFAULT '0%',
+  best_sales_day DECIMAL(18,2) DEFAULT 0,
+  lowest_sales_day DECIMAL(18,2) DEFAULT 0,
+  avg_daily DECIMAL(18,2) DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_store_date (store_id, report_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 -- INDEXES
 -- --------------------------------------------------------
 ALTER TABLE clients ADD PRIMARY KEY (id);
@@ -220,6 +244,10 @@ ALTER TABLE users
   ADD KEY owner_id (owner_id),
   ADD KEY store_id (store_id);
 
+ALTER TABLE reports_daily
+  ADD PRIMARY KEY (id),
+  ADD KEY idx_store_date (store_id,report_date);
+
 -- --------------------------------------------------------
 -- AUTO_INCREMENT
 -- --------------------------------------------------------
@@ -230,6 +258,7 @@ ALTER TABLE stores MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
 ALTER TABLE struck_receipt MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
 ALTER TABLE subscriptions MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
 ALTER TABLE users MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE reports_daily MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
 
 -- --------------------------------------------------------
 -- FOREIGN KEYS
