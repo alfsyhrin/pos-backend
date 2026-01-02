@@ -23,8 +23,8 @@ async function generateAllDailyReports() {
           SELECT ?, ?, 
             COUNT(*), 
             COALESCE(SUM(total_cost),0), 
-            COALESCE(SUM(discount),0),
-            COALESCE(SUM(total_cost),0) - COALESCE(SUM(discount),0),
+            0,
+            COALESCE(SUM(total_cost),0),
             IFNULL((SELECT SUM(p.cost_price * ti.qty)
                     FROM transaction_items ti
                     JOIN products p ON ti.product_id = p.id

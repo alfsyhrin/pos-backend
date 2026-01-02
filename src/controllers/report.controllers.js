@@ -12,12 +12,12 @@ const ReportController = {
 
       conn = await getTenantConnection(dbName);
 
-      // Total transaksi, pendapatan, diskon
+      // Total transaksi, pendapatan, diskon (DISKON DISET 0)
       const [summary] = await conn.query(
         `SELECT 
             COUNT(*) AS total_transaksi, 
             COALESCE(SUM(total_cost),0) AS total_pendapatan,
-            COALESCE(SUM(discount),0) AS total_diskon
+            0 AS total_diskon
          FROM transactions
          WHERE store_id = ? AND created_at BETWEEN ? AND ?`,
         [store_id, start, end]
@@ -236,12 +236,12 @@ const ReportController = {
         return response.badRequest(res, 'Laporan harian sudah ada untuk tanggal ini.');
       }
 
-      // Ambil data summary seperti di summary()
+      // Ambil data summary seperti di summary() (DISKON DISET 0)
       const [summary] = await conn.query(
         `SELECT 
             COUNT(*) AS total_transaksi, 
             COALESCE(SUM(total_cost),0) AS total_pendapatan,
-            COALESCE(SUM(discount),0) AS total_diskon
+            0 AS total_diskon
          FROM transactions
          WHERE store_id = ? AND DATE(created_at) = ?`,
         [store_id, date]
