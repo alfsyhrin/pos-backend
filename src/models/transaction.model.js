@@ -100,25 +100,13 @@ const TransactionModel = {
         query += ` ORDER BY t.created_at DESC`;
 
         // Perbaikan blok LIMIT & OFFSET
-        if (
-            filters.limit !== undefined &&
-            filters.limit !== null &&
-            filters.limit !== '' &&
-            !isNaN(Number(filters.limit)) &&
-            Number(filters.limit) > 0
-        ) {
-            const limitVal = Number(filters.limit);
+        const limitVal = Number(filters.limit);
+        if (Number.isInteger(limitVal) && limitVal > 0) {
             query += ` LIMIT ?`;
             params.push(limitVal);
 
-            if (
-                filters.offset !== undefined &&
-                filters.offset !== null &&
-                filters.offset !== '' &&
-                !isNaN(Number(filters.offset)) &&
-                Number(filters.offset) >= 0
-            ) {
-                const offsetVal = Number(filters.offset);
+            const offsetVal = Number(filters.offset);
+            if (Number.isInteger(offsetVal) && offsetVal >= 0) {
                 query += ` OFFSET ?`;
                 params.push(offsetVal);
             }
