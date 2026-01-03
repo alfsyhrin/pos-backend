@@ -1,4 +1,5 @@
 const SubscriptionModel = require('../models/subscription.model');
+const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getMainConnection } = require('../config/db'); // pastikan ada fungsi ini
 
@@ -26,6 +27,32 @@ const SubscriptionController = {
       return response.success(res, data);
     } catch (err) {
       return response.error(res, err, 'Gagal mengambil data subscription');
+    } finally {
+      if (conn) await conn.end();
+    }
+  },
+
+  async updateSubscription(req, res) {
+    let conn;
+    try {
+      const owner_id = req.user.owner_id;
+      conn = await getMainConnection();
+
+      // ...existing logic update/purchase subscription...
+      const { plan, status } = req.body;
+      await SubscriptionModel.updateByOwnerId(conn, owner_id, { plan, status });
+
+      // Logging aktivitas: update/purchase subscription
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: null,
+        action: 'update_subscription',
+        detail: `Update/purchase paket: ${plan} (${status})`
+      });
+
+      return response.success(res, { plan, status }, 'Subscription berhasil diupdate');
+    } catch (err) {
+      return response.error(res, err, 'Gagal update subscription');
     } finally {
       if (conn) await conn.end();
     }

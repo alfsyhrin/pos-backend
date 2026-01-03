@@ -355,6 +355,7 @@ async update(req, res) {
 
     const updatedProduct = await ProductModel.findById(conn, productId, storeId);
 
+    // Log aktivitas
     await ActivityLogModel.create(conn, {
       user_id: req.user.id,
       store_id: req.params.store_id,

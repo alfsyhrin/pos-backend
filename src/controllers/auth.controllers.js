@@ -187,7 +187,6 @@ async login(req, res) {
   }
 },
 
-
   /* =====================================================
      GET PROFILE (WAJIB ADA)
   ===================================================== */
@@ -226,10 +225,30 @@ async login(req, res) {
      LOGOUT (STATELESS)
   ===================================================== */
   async logout(req, res) {
-    res.json({
-      success: true,
-      message: 'Logout berhasil'
-    });
+    let conn;
+    try {
+      // Logging aktivitas: logout
+      if (req.user && req.user.db_name) {
+        conn = await getTenantConnection(req.user.db_name);
+        await ActivityLogModel.create(conn, {
+          user_id: req.user.id,
+          store_id: req.user.store_id || null,
+          action: 'logout',
+          detail: 'Logout dari aplikasi'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Logout berhasil'
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan server'
+      });
+    } finally {
+      if (conn) await conn.end();
+    }
   }
 };
 

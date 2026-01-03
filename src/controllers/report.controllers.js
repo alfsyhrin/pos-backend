@@ -293,6 +293,14 @@ const ReportController = {
         ]
       );
 
+      // Logging aktivitas: generate laporan harian
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: store_id,
+        action: 'generate_daily_report',
+        detail: `Generate laporan harian untuk tanggal ${date}`
+      });
+
       return response.success(res, { message: 'Laporan harian berhasil disimpan.' });
     } catch (err) {
       return response.error(res, err, 'Gagal generate laporan harian');

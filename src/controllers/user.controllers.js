@@ -119,12 +119,12 @@ const UserController = {
 
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create(conn, { owner_id, store_id, name, username, email, password: hashed, role });
-            // Setelah tambah user
+            // Logging aktivitas: tambah user
             await ActivityLogModel.create(conn, {
               user_id: req.user.id,
-              store_id: req.params.store_id,
+              store_id: store_id,
               action: 'add_user',
-              detail: `Tambah user: ${name}`
+              detail: `Tambah user: ${name} (${role})`
             });
             res.status(201).json({ success: true, message: 'User berhasil ditambah', id: userId });
         } catch (error) {
@@ -183,12 +183,12 @@ const UserController = {
 
             await UserModel.update(conn, id, updateData);
 
-            // Setelah edit user
+            // Logging aktivitas: edit user
             await ActivityLogModel.create(conn, {
                 user_id: req.user.id,
-                store_id: req.params.store_id,
+                store_id: userToUpdate.store_id,
                 action: 'edit_user',
-                detail: `Edit user: ${name || userToUpdate.name}`
+                detail: `Edit user: ${name || userToUpdate.name} (${role || userToUpdate.role})`
             });
             res.json({ success: true, message: 'User berhasil diupdate' });
         } catch (error) {
@@ -215,15 +215,16 @@ const UserController = {
 
             await UserModel.delete(conn, id);
 
+            // Logging aktivitas: hapus user
             await ActivityLogModel.create(conn, {
               user_id: req.user.id,
-              store_id: req.params.store_id,
+              store_id: user.store_id,
               action: 'delete_user',
-              detail: `Hapus user: ${user.name}`
+              detail: `Hapus user: ${user.name} (${user.role})`
             });
             res.json({ success: true, message: 'User berhasil dihapus permanen' });
         } catch (error) {
-            console.error('DELETE USER ERROR:', error); // Tambahkan log ini!
+            console.error('DELETE USER ERROR:', error);
             res.status(500).json({ success: false, message: 'Gagal hapus user', error: error.message });
         } finally {
             if (conn) await conn.end();

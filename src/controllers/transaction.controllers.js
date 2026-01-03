@@ -182,7 +182,7 @@ const TransactionController = {
                 const txRow = await TransactionModel.findById(conn, txId, store_id);
                 const mapped = mapTransactionToFrontend(txRow, processedItems);
 
-                // Setelah transaksi berhasil
+                // Logging aktivitas: transaksi baru
                 await ActivityLogModel.create(conn, {
                   user_id: req.user.id,
                   store_id: req.params.store_id,
@@ -316,6 +316,13 @@ const TransactionController = {
 
             const deleted = await TransactionModel.delete(conn, transaction_id, store_id);
             if (deleted) {
+                // Logging aktivitas: hapus transaksi
+                await ActivityLogModel.create(conn, {
+                  user_id: req.user.id,
+                  store_id: store_id,
+                  action: 'delete_transaction',
+                  detail: `Hapus transaksi: ID ${transaction_id}`
+                });
                 return response.success(res, null, 'Transaksi berhasil dihapus');
             } else {
                 return response.error(res, 'Gagal menghapus transaksi');

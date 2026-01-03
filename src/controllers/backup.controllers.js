@@ -4,6 +4,9 @@ const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
 const { parse } = require('csv-parse/sync'); // perbaiki import
 const XLSX = require('xlsx');
+const fs = require('fs');
+const archiver = require('archiver');
+const stream = require('stream');
 
 function toMySQLDatetime(dt) {
   if (!dt) return null;
@@ -20,91 +23,98 @@ exports.exportData = async (req, res) => {
     if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
     conn = await getTenantConnection(dbName);
 
-    const type = req.query.type || 'all';
-    const format = req.query.format || 'json'; // <-- tambahkan format
-    let data = {};
+    // Ambil parameter dari frontend
+    const dataParam = (req.query.data || 'all').toLowerCase();
+    const typeParam = (req.query.type || 'json').toLowerCase();
 
-    if (type === 'users' || type === 'all') {
+    // Mapping dataParam ke tabel
+    let data = {};
+    if (dataParam === 'all') {
       const [users] = await conn.query('SELECT * FROM users');
-      data.users = users;
-    }
-    if (type === 'products' || type === 'all') {
       const [products] = await conn.query('SELECT * FROM products');
-      data.products = products;
-    }
-    if (type === 'transactions' || type === 'all') {
       const [transactions] = await conn.query('SELECT * FROM transactions');
       const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
-      data.transactions = transactions;
-      data.transaction_items = transaction_items;
+      data = { users, products, transactions, transaction_items };
+    } else if (dataParam === 'produk' || dataParam === 'products') {
+      const [products] = await conn.query('SELECT * FROM products');
+      data = { products };
+    } else if (dataParam === 'transaksi' || dataParam === 'transactions') {
+      const [transactions] = await conn.query('SELECT * FROM transactions');
+      const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+      data = { transactions, transaction_items };
+    } else if (dataParam === 'karyawan' || dataParam === 'users') {
+      const [users] = await conn.query('SELECT * FROM users WHERE role != "owner"');
+      data = { users };
+    } else if (dataParam === 'pelanggan' || dataParam === 'customers') {
+      const [customers] = await conn.query('SELECT * FROM customers');
+      data = { customers };
+    } else {
+      return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
     }
 
-    // Export as JSON
-    if (format === 'json') {
-      res.setHeader('Content-Disposition', `attachment; filename=backup_${type}_${Date.now()}.json`);
+    // === ZIP EXPORT FOR ALL DATA ===
+    if (dataParam === 'all' && (typeParam === 'excel' || typeParam === 'xlsx' || typeParam === 'csv' || typeParam === 'json')) {
+      res.setHeader('Content-Disposition', `attachment; filename=backup_all_${typeParam}_${Date.now()}.zip`);
+      res.setHeader('Content-Type', 'application/zip');
+      const archive = archiver('zip');
+      archive.pipe(res);
+
+      for (const [table, rows] of Object.entries(data)) {
+        let buffer, filename;
+        if (typeParam === 'excel' || typeParam === 'xlsx') {
+          const workbook = new ExcelJS.Workbook();
+          const ws = workbook.addWorksheet(table);
+          if (rows.length > 0) ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
+          rows.forEach(row => ws.addRow(row));
+          buffer = await workbook.xlsx.writeBuffer();
+          filename = `${table}.xlsx`;
+        } else if (typeParam === 'csv') {
+          const parser = new Parser();
+          const csv = parser.parse(rows || []);
+          buffer = Buffer.from(csv, 'utf-8');
+          filename = `${table}.csv`;
+        } else if (typeParam === 'json') {
+          buffer = Buffer.from(JSON.stringify(rows, null, 2), 'utf-8');
+          filename = `${table}.json`;
+        }
+        archive.append(buffer, { name: filename });
+      }
+      archive.finalize();
+      // archiver akan handle res.end()
+      await ActivityLogModel.create(conn, {
+        user_id: req.user.id,
+        store_id: req.user.store_id || null,
+        action: 'backup_data',
+        detail: `Backup data kategori ${dataParam} dalam format zip (${typeParam})`
+      });
+      return;
+    }
+
+    // === SINGLE FILE EXPORT ===
+    if (typeParam === 'json') {
+      res.setHeader('Content-Disposition', `attachment; filename=backup_${dataParam}_${Date.now()}.json`);
       res.setHeader('Content-Type', 'application/json');
       res.json(data);
-    }
-    // Export as CSV (per table, zip not implemented here)
-    else if (format === 'csv') {
-      // Pilih satu tabel saja untuk CSV, atau gabungkan semua jadi satu file
-      // Contoh: jika type=products, export products.csv
-      let csv, filename;
-      if (type === 'users') {
-        const parser = new Parser();
-        csv = parser.parse(data.users || []);
-        filename = 'users.csv';
-      } else if (type === 'products') {
-        const parser = new Parser();
-        csv = parser.parse(data.products || []);
-        filename = 'products.csv';
-      } else if (type === 'transactions') {
-        // Gabungkan transactions dan transaction_items ke dua file CSV (simple: hanya transactions)
-        const parser = new Parser();
-        csv = parser.parse(data.transactions || []);
-        filename = 'transactions.csv';
-      } else {
-        // Default: export semua tabel sebagai satu file CSV (hanya products sebagai contoh)
-        const parser = new Parser();
-        csv = parser.parse(data.products || []);
-        filename = 'backup.csv';
-      }
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    } else if (typeParam === 'csv') {
+      const tableName = Object.keys(data)[0];
+      const parser = new Parser();
+      const csv = parser.parse(data[tableName] || []);
+      res.setHeader('Content-Disposition', `attachment; filename=${tableName}_${Date.now()}.csv`);
       res.setHeader('Content-Type', 'text/csv');
       res.send(csv);
-    }
-    // Export as Excel
-    else if (format === 'excel' || format === 'xlsx') {
+    } else if (typeParam === 'excel' || typeParam === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
-
-      // Tambahkan sheet per tabel
-      if (data.users) {
-        const ws = workbook.addWorksheet('users');
-        if (data.users.length > 0) ws.columns = Object.keys(data.users[0]).map(key => ({ header: key, key }));
-        data.users.forEach(row => ws.addRow(row));
+      for (const [table, rows] of Object.entries(data)) {
+        const ws = workbook.addWorksheet(table);
+        if (rows.length > 0) ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
+        rows.forEach(row => ws.addRow(row));
       }
-      if (data.products) {
-        const ws = workbook.addWorksheet('products');
-        if (data.products.length > 0) ws.columns = Object.keys(data.products[0]).map(key => ({ header: key, key }));
-        data.products.forEach(row => ws.addRow(row));
-      }
-      if (data.transactions) {
-        const ws = workbook.addWorksheet('transactions');
-        if (data.transactions.length > 0) ws.columns = Object.keys(data.transactions[0]).map(key => ({ header: key, key }));
-        data.transactions.forEach(row => ws.addRow(row));
-      }
-      if (data.transaction_items) {
-        const ws = workbook.addWorksheet('transaction_items');
-        if (data.transaction_items.length > 0) ws.columns = Object.keys(data.transaction_items[0]).map(key => ({ header: key, key }));
-        data.transaction_items.forEach(row => ws.addRow(row));
-      }
-
-      res.setHeader('Content-Disposition', `attachment; filename=backup_${type}_${Date.now()}.xlsx`);
+      res.setHeader('Content-Disposition', `attachment; filename=backup_${dataParam}_${Date.now()}.xlsx`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      return res.status(400).json({ success: false, message: 'Format tidak didukung' });
+      return res.status(400).json({ success: false, message: 'Format file tidak didukung' });
     }
 
     // Log activity
@@ -112,7 +122,7 @@ exports.exportData = async (req, res) => {
       user_id: req.user.id,
       store_id: req.user.store_id || null,
       action: 'backup_data',
-      detail: 'Backup data dilakukan'
+      detail: `Backup data kategori ${dataParam} dalam format ${typeParam}`
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Gagal export data', error: error.message });
