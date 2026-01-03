@@ -11,17 +11,32 @@ const ActivityLogController = {
       if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
       conn = await getTenantConnection(dbName);
 
-      const logs = await ActivityLogModel.listByStore(conn, store_id, 50);
+      // Ambil pagination dari query
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const offset = (page - 1) * limit;
+
+      // Query log & total
+      const items = await ActivityLogModel.listByStorePaginated(conn, store_id, limit, offset);
+      const total = await ActivityLogModel.countByStore(conn, store_id);
+
       // Format untuk frontend
-      const mapped = logs.map(log => ({
+      const mapped = items.map(log => ({
         id: log.id,
         user: log.user_name,
         action: log.action,
         title: mapActionToTitle(log.action),
         detail: log.detail,
-        time: log.created_at // frontend bisa format "10 menit lalu"
+        time: log.created_at
       }));
-      return response.success(res, mapped);
+
+      return response.success(res, {
+        items: mapped,
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      });
     } catch (err) {
       return response.error(res, err, 'Gagal mengambil log aktivitas');
     } finally {
@@ -36,6 +51,7 @@ function mapActionToTitle(action) {
     case 'add_product': return 'Produk ditambahkan';
     case 'transaction': return 'Transaksi dibuat';
     case 'update_setting': return 'Pengaturan diubah';
+    // ...tambahkan mapping lain sesuai kebutuhan...
     default: return 'Aktivitas';
   }
 }

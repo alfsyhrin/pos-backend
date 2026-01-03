@@ -8,18 +8,27 @@ const ActivityLogModel = {
     );
   },
 
-  // Ambil log aktivitas per store (limit default 50)
-  async listByStore(conn, store_id, limit = 50) {
+  // Ambil log aktivitas per store dengan pagination
+  async listByStorePaginated(conn, store_id, limit = 10, offset = 0) {
     const [rows] = await conn.query(
       `SELECT al.*, u.name AS user_name
        FROM activity_logs al
        LEFT JOIN users u ON al.user_id = u.id
        WHERE al.store_id = ?
        ORDER BY al.created_at DESC
-       LIMIT ?`,
-      [store_id, limit]
+       LIMIT ? OFFSET ?`,
+      [store_id, limit, offset]
     );
     return rows;
+  },
+
+  // Hitung total log aktivitas per store
+  async countByStore(conn, store_id) {
+    const [[{ count }]] = await conn.query(
+      `SELECT COUNT(*) AS count FROM activity_logs WHERE store_id = ?`,
+      [store_id]
+    );
+    return count;
   }
 };
 
