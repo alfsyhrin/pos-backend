@@ -234,14 +234,17 @@ const TransactionController = {
             if (!dbName) return response.badRequest(res, 'Tenant DB tidak ditemukan di token.');
             conn = await getTenantConnection(dbName);
 
-            // Konversi page & limit ke offset jika ada
-            if (page !== undefined && limit !== undefined) {
-                page = Number(page);
-                limit = Number(limit);
-                if (!isNaN(page) && !isNaN(limit) && page > 0 && limit > 0) {
-                    offset = (page - 1) * limit;
-                }
+            // normalize numeric pagination params
+            limit = limit !== undefined ? parseInt(limit, 10) : undefined;
+            offset = offset !== undefined ? parseInt(offset, 10) : undefined;
+            page = page !== undefined ? parseInt(page, 10) : undefined;
+
+            if (!isNaN(page) && !isNaN(limit)) {
+                offset = (page - 1) * limit;
             }
+
+            if (isNaN(limit) || limit <= 0) limit = undefined;
+            if (isNaN(offset) || offset < 0) offset = undefined;
 
             const filters = { payment_status, search, date, start_date, end_date, limit, offset };
 

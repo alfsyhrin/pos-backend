@@ -107,6 +107,7 @@ const TransactionModel = {
             query += ` LIMIT ?`;
             params.push(limitVal);
 
+            // Hanya tambahkan OFFSET jika offsetVal valid
             if (!isNaN(offsetVal) && offsetVal >= 0) {
                 query += ` OFFSET ?`;
                 params.push(offsetVal);
