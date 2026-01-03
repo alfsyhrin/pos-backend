@@ -99,23 +99,25 @@ const TransactionModel = {
 
         query += ` ORDER BY t.created_at DESC`;
 
-        // Perbaikan blok LIMIT & OFFSET
-        let limitVal = parseInt(filters.limit, 10);
-        let offsetVal = parseInt(filters.offset, 10);
+        // Perbaikan: jangan gunakan placeholder untuk LIMIT/OFFSET — cast & inject angka yang tervalidasi
+        const limitVal = Number.isFinite(Number(filters.limit)) ? parseInt(filters.limit, 10) : NaN;
+        const offsetVal = Number.isFinite(Number(filters.offset)) ? parseInt(filters.offset, 10) : NaN;
 
         if (!isNaN(limitVal) && limitVal > 0) {
-            query += ` LIMIT ?`;
-            params.push(limitVal);
-
-            // Hanya tambahkan OFFSET jika offsetVal valid
+            // safe to interpolate because we've validated as integers
+            query += ` LIMIT ${limitVal}`;
             if (!isNaN(offsetVal) && offsetVal >= 0) {
-                query += ` OFFSET ?`;
-                params.push(offsetVal);
+                query += ` OFFSET ${offsetVal}`;
             }
         }
-
-        const [rows] = await db.execute(query, params);
-        return rows;
+        try {
+            const [rows] = await db.execute(query, params);
+            return rows;
+        } catch (err) {
+            // tambahkan log query + params utk debugging saat error
+            console.error('TransactionModel.findAllByStore SQL Error', { query, params, err });
+            throw err;
+        }
     },
 
     // Update transaksi (conn, transactionId, storeId, updateData) atau (transactionId, storeId, updateData)
