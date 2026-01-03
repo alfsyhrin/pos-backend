@@ -100,16 +100,14 @@ const TransactionModel = {
         query += ` ORDER BY t.created_at DESC`;
 
         // Perbaikan blok LIMIT & OFFSET
-        let limitVal = Number(filters.limit);
-        let offsetVal = Number(filters.offset);
+        let limitVal = parseInt(filters.limit, 10);
+        let offsetVal = parseInt(filters.offset, 10);
 
-        // Hanya tambahkan LIMIT jika benar-benar valid
-        if (Number.isInteger(limitVal) && limitVal > 0) {
+        if (!isNaN(limitVal) && limitVal > 0) {
             query += ` LIMIT ?`;
             params.push(limitVal);
 
-            // Hanya tambahkan OFFSET jika valid
-            if (Number.isInteger(offsetVal) && offsetVal >= 0) {
+            if (!isNaN(offsetVal) && offsetVal >= 0) {
                 query += ` OFFSET ?`;
                 params.push(offsetVal);
             }
