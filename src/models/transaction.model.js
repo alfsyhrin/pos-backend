@@ -9,12 +9,20 @@ const TransactionModel = {
     async create(connOrData, maybeData) {
         const db = isConn(connOrData) ? connOrData : pool;
         const data = isConn(connOrData) ? maybeData : connOrData;
-        const { store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status } = data;
+        const {
+            store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status,
+            subtotal, discount_total, tax, tax_percentage, jenis_diskon, nilai_diskon, buy_qty, free_qty
+        } = data;
 
         const [result] = await db.execute(
-            `INSERT INTO transactions (store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status, created_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status]
+            `INSERT INTO transactions (
+                store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status,
+                subtotal, discount_total, tax, tax_percentage, jenis_diskon, nilai_diskon, buy_qty, free_qty, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [
+                store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status,
+                subtotal, discount_total, tax, tax_percentage, jenis_diskon, nilai_diskon, buy_qty, free_qty
+            ]
         );
         return result.insertId;
     },
@@ -33,14 +41,17 @@ const TransactionModel = {
             item.product_name || '', // <-- tambahkan product_name
             item.quantity,
             Number(item.price),
-            Number(item.quantity) * Number(item.price)
+            Number(item.discount_type) || null,
+            Number(item.discount_value) || null,
+            Number(item.discount_amount) || 0,
+            Number(item.subtotal)
         ]);
 
         // Build placeholders for multi-row insert
-        const placeholders = values.map(() => '(?,?,?,?,?,?)').join(',');
+        const placeholders = values.map(() => '(?,?,?,?,?,?,?,?,?)').join(',');
 
         await db.execute(
-            `INSERT INTO transaction_items (transaction_id, product_id, product_name, qty, price, subtotal) VALUES ${placeholders}`,
+            `INSERT INTO transaction_items (transaction_id, product_id, product_name, qty, price, discount_type, discount_value, discount_amount, subtotal) VALUES ${placeholders}`,
             values.flat()
         );
     },
@@ -173,7 +184,7 @@ const TransactionModel = {
 
     getItemsByTransactionId: async function(conn, transactionId) {
         const [rows] = await conn.execute(
-          `SELECT ti.product_id, p.name as product_name, p.sku, ti.qty as quantity, ti.price, ti.subtotal
+          `SELECT ti.product_id, p.name as product_name, p.sku, ti.qty as quantity, ti.price, ti.subtotal, ti.discount_type, ti.discount_value, ti.discount_amount
            FROM transaction_items ti
            LEFT JOIN products p ON ti.product_id = p.id
            WHERE ti.transaction_id = ?`,

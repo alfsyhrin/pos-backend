@@ -16,7 +16,13 @@ const createTransactionSchema = Joi.object({
   payment_type: Joi.string().required(),
   payment_method: Joi.string().required(),
   received_amount: Joi.number().min(0).required(),
+  tax_percentage: Joi.number().min(0).max(100).allow(null), // Optional, from frontend
 
+  // Discount fields for transaction-level discount
+  discount_type: Joi.string().valid('percentage', 'nominal', 'buyxgety').allow(null),
+  discount_value: Joi.number().min(0).allow(null),
+  buy_qty: Joi.number().integer().min(1).allow(null),
+  free_qty: Joi.number().integer().min(1).allow(null),
 
   // ⛔ JANGAN DIVALIDASI
   // total_cost

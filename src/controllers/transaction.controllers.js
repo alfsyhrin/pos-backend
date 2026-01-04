@@ -14,13 +14,24 @@ function mapTransactionToFrontend(tx, items = []) {
     total: tx.total_cost,
     received: tx.received_amount,
     change: tx.change_amount,
+    tax_percentage: tx.tax_percentage,
+    subtotal: tx.subtotal,
+    discount_total: tx.discount_total,
+    tax: tx.tax,
+    jenis_diskon: tx.jenis_diskon,
+    nilai_diskon: tx.nilai_diskon,
+    buy_qty: tx.buy_qty,
+    free_qty: tx.free_qty,
     items: items.map(item => ({
       productId: item.product_id,
       name: item.product_name,
       sku: item.sku,
       price: item.price,
       qty: item.quantity,
-      lineTotal: item.subtotal
+      lineTotal: item.subtotal,
+      discount_type: item.discount_type,
+      discount_value: item.discount_value,
+      discount_amount: item.discount_amount
     }))
   };
 }
@@ -31,7 +42,12 @@ const TransactionController = {
         let conn;
         try {
             const { store_id } = req.params;
-            const { payment_type, payment_method, received_amount, items } = req.body;
+            const {
+                payment_type, payment_method, received_amount, items,
+                tax_percentage: requestTaxPercentage,
+                discount_type, discount_value, buy_qty, free_qty,
+                jenis_diskon, nilai_diskon, buyQty, freeQty
+            } = req.body;
 
             const dbName = req.user.db_name;
             // Ambil user_id dari JWT/session, bukan dari req.body
@@ -127,9 +143,14 @@ const TransactionController = {
             }
 
             // Menghitung total transaksi
-            // PATCH: Ambil pajak dari tabel stores
-            const [storeRows] = await conn.query('SELECT tax_percentage FROM stores WHERE id = ?', [store_id]);
-            const taxPercentage = Number(storeRows[0]?.tax_percentage || 0);
+            // PATCH: Ambil pajak dari request payload atau tabel stores
+            let taxPercentage;
+            if (requestTaxPercentage !== undefined && requestTaxPercentage !== null) {
+                taxPercentage = Number(requestTaxPercentage);
+            } else {
+                const [storeRows] = await conn.query('SELECT tax_percentage FROM stores WHERE id = ?', [store_id]);
+                taxPercentage = Number(storeRows[0]?.tax_percentage || 0);
+            }
             const netSubtotal = grossSubtotal - discountTotal;
             const tax = netSubtotal * (taxPercentage / 100);
             const grandTotal = netSubtotal + tax;

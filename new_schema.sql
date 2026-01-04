@@ -147,6 +147,10 @@ CREATE TABLE transactions (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   tax DECIMAL(12,2) DEFAULT 0,
   tax_percentage DECIMAL(5,2) DEFAULT 0,
+  jenis_diskon ENUM('percentage','nominal','buyxgety') DEFAULT NULL,
+  nilai_diskon DECIMAL(10,2) DEFAULT NULL,
+  buy_qty INT(11) DEFAULT NULL,
+  free_qty INT(11) DEFAULT NULL,
   role VARCHAR(20),
   is_owner BOOLEAN,
   PRIMARY KEY (id)
