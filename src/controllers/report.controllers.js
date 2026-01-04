@@ -73,7 +73,13 @@ const ReportController = {
       const gross_profit = net_revenue - total_hpp;
       const operational_cost = 0; // default
       const net_profit = gross_profit - operational_cost;
-      const margin = total_pendapatan > 0 ? `${Math.round((net_profit / total_pendapatan) * 100)}%` : '0%';
+  const marginValue =
+  net_revenue > 0
+    ? (gross_profit / net_revenue) * 100
+    : 0;
+
+const margin = `${marginValue.toFixed(2)}%`;
+port
 
       return response.success(res, {
         total_transaksi: summary[0].total_transaksi,
@@ -247,15 +253,16 @@ const ReportController = {
         [store_id, date]
       );
 
-      const [hppRows] = await conn.query(
-        `SELECT SUM(p.cost_price * ti.qty) AS total_hpp
-         FROM transaction_items ti
-         JOIN products p ON ti.product_id = p.id
-         JOIN transactions t ON ti.transaction_id = t.id
-         WHERE t.store_id = ? AND DATE(t.created_at) = ?`,
-        [store_id, date]
-      );
-      const total_hpp = hppRows[0].total_hpp || 0;
+const [hppRows] = await conn.query(
+  `SELECT COALESCE(SUM(ti.price * ti.qty), 0) AS total_hpp
+   FROM transaction_items ti
+   JOIN transactions t ON ti.transaction_id = t.id
+   WHERE t.store_id = ? AND DATE(t.created_at) BETWEEN ? AND ?`,
+  [store_id, start, end]
+);
+
+const total_hpp = Number(hppRows[0].total_hpp) || 0;
+
 
       // Statistik harian (hanya 1 hari)
       const total_pendapatan = Number(summary[0].total_pendapatan) || 0;
@@ -264,7 +271,13 @@ const ReportController = {
       const gross_profit = net_revenue - total_hpp;
       const operational_cost = 0; // default
       const net_profit = gross_profit - operational_cost;
-      const margin = total_pendapatan > 0 ? `${Math.round((net_profit / total_pendapatan) * 100)}%` : '0%';
+      const marginValue =
+  net_revenue > 0
+    ? (gross_profit / net_revenue) * 100
+    : 0;
+
+const margin = `${marginValue.toFixed(2)}%`;
+
 
       // Untuk best_sales_day, lowest_sales_day, avg_daily (hanya 1 hari, jadi sama)
       const best_sales_day = total_pendapatan;
