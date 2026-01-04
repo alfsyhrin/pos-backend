@@ -56,7 +56,7 @@ function normalizeNumericFields(obj, numericFields) {
 
 // PATCH: Normalisasi jenis_diskon
 function normalizeEnumField(obj, field, validValues) {
-  if (obj[field] && !validValues.includes(obj[field])) {
+  if (!obj[field] || obj[field] === '' || !validValues.includes(obj[field])) {
     obj[field] = null;
   }
 }
@@ -315,7 +315,6 @@ exports.importData = async (req, res) => {
       ];
       for (const product of data.products) {
         normalizeNumericFields(product, numericFields);
-        // PATCH: Normalisasi jenis_diskon
         normalizeEnumField(product, 'jenis_diskon', ['percentage', 'nominal', 'buyxgety']);
         await conn.query(
           `INSERT INTO products (id, store_id, name, sku, barcode, price, cost_price, stock, category, description, image_url, is_active, created_at, updated_at, jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty)
