@@ -241,13 +241,21 @@ exports.importData = async (req, res) => {
     }
     // === CSV ===
     else if (originalname.endsWith('.csv')) {
-      // Asumsi: CSV hanya untuk satu tabel (products, users, atau transactions)
       const csvRows = parse(req.file.buffer.toString(), { columns: true, skip_empty_lines: true });
       // Deteksi tipe dari nama file
       if (originalname.includes('product')) data = { products: csvRows };
       else if (originalname.includes('user')) data = { users: csvRows };
       else if (originalname.includes('transaction_item')) data = { transaction_items: csvRows };
-      else data = { transactions: csvRows };
+      else if (originalname.includes('transaction')) data = { transactions: csvRows };
+      else {
+        // Fallback: deteksi dari kolom
+        const columns = Object.keys(csvRows[0] || {});
+        if (columns.includes('price') && columns.includes('stock')) data = { products: csvRows };
+        else if (columns.includes('username') && columns.includes('role')) data = { users: csvRows };
+        else if (columns.includes('total_cost') && columns.includes('payment_type')) data = { transactions: csvRows };
+        else if (columns.includes('qty') && columns.includes('price') && columns.includes('transaction_id')) data = { transaction_items: csvRows };
+        else return res.status(400).json({ success: false, message: 'Tidak bisa mendeteksi tipe data CSV. Pastikan nama file atau kolom sesuai.' });
+      }
     }
     // === Excel/XLSX ===
     else if (originalname.endsWith('.xlsx') || originalname.endsWith('.xls')) {
