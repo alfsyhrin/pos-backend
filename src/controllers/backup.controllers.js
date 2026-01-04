@@ -57,6 +57,9 @@ exports.exportData = async (req, res) => {
     } else if (dataParam === 'pelanggan' || dataParam === 'customers') {
       const [customers] = await conn.query('SELECT * FROM customers');
       data = { customers };
+    } else if (dataParam === 'item_transaksi' || dataParam === 'transaction_items') {
+      const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+      data = { transaction_items };
     } else {
       return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
     }
