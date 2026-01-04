@@ -129,6 +129,7 @@ const TransactionController = {
                     product_name: product.name,
                     sku: product.sku,
                     price: product.price,
+                    cost_price: product.cost_price,
                     quantity: item.quantity,
                     discount_type: item.discount_type,
                     discount_value: item.discount_value,

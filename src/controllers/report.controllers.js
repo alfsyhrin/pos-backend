@@ -253,14 +253,16 @@ const margin = `${marginValue.toFixed(2)}%`;
       );
 
 const [hppRows] = await conn.query(
-  `SELECT COALESCE(SUM(ti.price * ti.qty), 0) AS total_hpp
+  `SELECT COALESCE(SUM(ti.cost_price * ti.qty), 0) AS total_hpp
    FROM transaction_items ti
    JOIN transactions t ON ti.transaction_id = t.id
-   WHERE t.store_id = ? AND DATE(t.created_at) BETWEEN ? AND ?`,
-  [store_id, start, end]
+   WHERE t.store_id = ? AND DATE(t.created_at) = ?`,
+  [store_id, date]
 );
 
 const total_hpp = Number(hppRows[0].total_hpp) || 0;
+
+
 
 
       // Statistik harian (hanya 1 hari)

@@ -44,33 +44,44 @@ const TransactionModel = {
     },
 
     // Menambahkan item ke transaksi (conn, transactionId, items) atau (transactionId, items)
-    async addItems(connOrId, maybeIdOrItems, maybeItems) {
-        const db = isConn(connOrId) ? connOrId : pool;
-        const transactionId = isConn(connOrId) ? maybeIdOrItems : connOrId;
-        const items = isConn(connOrId) ? maybeItems : maybeIdOrItems;
+async addItems(connOrId, maybeIdOrItems, maybeItems) {
+    const db = isConn(connOrId) ? connOrId : pool;
+    const transactionId = isConn(connOrId) ? maybeIdOrItems : connOrId;
+    const items = isConn(connOrId) ? maybeItems : maybeIdOrItems;
 
-        if (!items || !items.length) return;
+    if (!items || !items.length) return;
 
-        const values = items.map(item => [
-            transactionId,
-            item.product_id,
-            item.product_name || '', // <-- tambahkan product_name
-            item.quantity,
-            Number(item.price),
-            Number(item.discount_type) || null,
-            Number(item.discount_value) || null,
-            Number(item.discount_amount) || 0,
-            Number(item.subtotal)
-        ]);
+    const values = items.map(item => [
+        transactionId,
+        item.product_id,
+        item.product_name || '',
+        item.quantity,
+        Number(item.price),             // harga jual snapshot
+        Number(item.cost_price),        // 🔥 harga modal snapshot
+        item.discount_type || null,
+        Number(item.discount_value) || null,
+        Number(item.discount_amount) || 0,
+        Number(item.subtotal)
+    ]);
 
-        // Build placeholders for multi-row insert
-        const placeholders = values.map(() => '(?,?,?,?,?,?,?,?,?)').join(',');
+    const placeholders = values.map(() => '(?,?,?,?,?,?,?,?,?,?)').join(',');
 
-        await db.execute(
-            `INSERT INTO transaction_items (transaction_id, product_id, product_name, qty, price, discount_type, discount_value, discount_amount, subtotal) VALUES ${placeholders}`,
-            values.flat()
-        );
-    },
+    await db.execute(
+        `INSERT INTO transaction_items (
+            transaction_id,
+            product_id,
+            product_name,
+            qty,
+            price,
+            cost_price,
+            discount_type,
+            discount_value,
+            discount_amount,
+            subtotal
+        ) VALUES ${placeholders}`,
+        values.flat()
+    );
+},
 
     // Mendapatkan transaksi berdasarkan ID (conn, transactionId, storeId) atau (transactionId, storeId)
     async findById(connOrId, maybeIdOrStore, maybeStore) {
@@ -200,7 +211,7 @@ const TransactionModel = {
 
     getItemsByTransactionId: async function(conn, transactionId) {
         const [rows] = await conn.execute(
-          `SELECT ti.product_id, p.name as product_name, p.sku, ti.qty as quantity, ti.price, ti.subtotal, ti.discount_type, ti.discount_value, ti.discount_amount
+          `SELECT ti.product_id, p.name as product_name, p.sku, ti.qty as quantity, ti.price, ti.cost_price, ti.subtotal, ti.discount_type, ti.discount_value, ti.discount_amount
            FROM transaction_items ti
            LEFT JOIN products p ON ti.product_id = p.id
            WHERE ti.transaction_id = ?`,
