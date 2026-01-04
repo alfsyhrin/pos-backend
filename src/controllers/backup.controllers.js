@@ -26,21 +26,30 @@ exports.exportData = async (req, res) => {
     // Ambil parameter dari frontend
     const dataParam = (req.query.data || 'all').toLowerCase();
     const typeParam = (req.query.type || 'json').toLowerCase();
+    const startDate = req.query.start_date;
+    const endDate = req.query.end_date;
 
-    // Mapping dataParam ke tabel
+    // Helper untuk filter tanggal
+    function buildDateFilter(field) {
+      if (startDate && endDate) return `WHERE ${field} BETWEEN '${startDate} 00:00:00' AND '${endDate} 23:59:59'`;
+      if (startDate) return `WHERE ${field} >= '${startDate} 00:00:00'`;
+      if (endDate) return `WHERE ${field} <= '${endDate} 23:59:59'`;
+      return '';
+    }
+
     let data = {};
     if (dataParam === 'all') {
       const [users] = await conn.query('SELECT * FROM users');
       const [products] = await conn.query('SELECT * FROM products');
-      const [transactions] = await conn.query('SELECT * FROM transactions');
-      const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+      const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
+      const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
       data = { users, products, transactions, transaction_items };
     } else if (dataParam === 'produk' || dataParam === 'products') {
       const [products] = await conn.query('SELECT * FROM products');
       data = { products };
     } else if (dataParam === 'transaksi' || dataParam === 'transactions') {
-      const [transactions] = await conn.query('SELECT * FROM transactions');
-      const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+      const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
+      const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
       data = { transactions, transaction_items };
     } else if (dataParam === 'karyawan' || dataParam === 'users') {
       const [users] = await conn.query('SELECT * FROM users WHERE role != "owner"');
