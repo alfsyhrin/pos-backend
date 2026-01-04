@@ -4,6 +4,8 @@ function isConn(obj) {
   return obj && typeof obj.execute === 'function';
 }
 
+function toNull(val) { return val === undefined ? null : val; }
+
 const TransactionModel = {
     // Membuat transaksi baru (conn, data) atau (data)
     async create(connOrData, maybeData) {
@@ -20,8 +22,22 @@ const TransactionModel = {
                 subtotal, discount_total, tax, tax_percentage, jenis_diskon, nilai_diskon, buy_qty, free_qty, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
-                store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, payment_status,
-                subtotal, discount_total, tax, tax_percentage, jenis_diskon, nilai_diskon, buy_qty, free_qty
+                store_id,
+                user_id,
+                total_cost,
+                payment_type,
+                payment_method,
+                received_amount,
+                change_amount,
+                payment_status,
+                subtotal,
+                discount_total,
+                tax,
+                tax_percentage,
+                toNull(jenis_diskon),
+                toNull(nilai_diskon),
+                toNull(buy_qty),
+                toNull(free_qty)
             ]
         );
         return result.insertId;
