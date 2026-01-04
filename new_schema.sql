@@ -37,6 +37,18 @@ CREATE TABLE clients (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Table: import_logs
+CREATE TABLE IF NOT EXISTS import_logs (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  store_id INT(11) DEFAULT NULL,
+  user_id INT(11) DEFAULT NULL,
+  filename VARCHAR(255) DEFAULT NULL,
+  size BIGINT DEFAULT 0,
+  status ENUM('success','failed','pending') DEFAULT 'success',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- --------------------------------------------------------
 -- Table: owners
 -- --------------------------------------------------------
@@ -144,6 +156,7 @@ CREATE TABLE transactions (
   customer_phone VARCHAR(15) DEFAULT NULL,
   payment_status VARCHAR(50) DEFAULT 'pending',
   subtotal DECIMAL(12,2) DEFAULT 0, 
+  discount_total DECIMAL(12,2) DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   tax DECIMAL(12,2) DEFAULT 0,

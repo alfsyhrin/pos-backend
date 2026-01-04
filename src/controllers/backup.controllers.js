@@ -190,12 +190,20 @@ exports.exportData = async (req, res) => {
 
 exports.importData = async (req, res) => {
   let conn;
+  let importLogId = null;
   try {
     const dbName = req.user.db_name;
     if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
     conn = await getTenantConnection(dbName);
 
     if (!req.file) return res.status(400).json({ success: false, message: 'File backup tidak ditemukan' });
+
+    // Catat log import (status pending)
+    const [result] = await conn.query(
+      `INSERT INTO import_logs (store_id, user_id, filename, size, status) VALUES (?, ?, ?, ?, ?)`,
+      [req.user.store_id, req.user.id, req.file.originalname, req.file.size, 'pending']
+    );
+    importLogId = result.insertId;
 
     let data;
     const mimetype = req.file.mimetype;
@@ -285,6 +293,9 @@ exports.importData = async (req, res) => {
       }
     }
 
+    // Jika sukses, update status ke success
+    await conn.query(`UPDATE import_logs SET status='success' WHERE id=?`, [importLogId]);
+
     res.json({ success: true, message: 'Import data berhasil' });
 
     // Log activity
@@ -295,6 +306,10 @@ exports.importData = async (req, res) => {
       detail: 'Import data dilakukan'
     });
   } catch (error) {
+    // Jika gagal, update status ke failed
+    if (conn && importLogId) {
+      await conn.query(`UPDATE import_logs SET status='failed' WHERE id=?`, [importLogId]);
+    }
     res.status(500).json({ success: false, message: 'Gagal import data', error: error.message });
   } finally {
     if (conn) await conn.end();
@@ -327,6 +342,53 @@ exports.resetData = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Gagal reset data', error: error.message });
+  } finally {
+    if (conn) await conn.end();
+  }
+};
+
+exports.importHistory = async (req, res) => {
+  let conn;
+  try {
+    const dbName = req.user.db_name;
+    if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
+    conn = await getTenantConnection(dbName);
+
+    const [rows] = await conn.query(
+      `SELECT filename, size, created_at as date, status FROM import_logs WHERE store_id=? ORDER BY created_at DESC LIMIT 50`,
+      [req.user.store_id]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Gagal mengambil riwayat import', error: error.message });
+  } finally {
+    if (conn) await conn.end();
+  }
+};
+
+exports.importStats = async (req, res) => {
+  let conn;
+  try {
+    const dbName = req.user.db_name;
+    if (!dbName) return res.status(400).json({ success: false, message: 'Tenant DB not found' });
+    conn = await getTenantConnection(dbName);
+
+    const [[stats]] = await conn.query(
+      `SELECT COUNT(*) as total_files,
+              SUM(size) as total_size,
+              SUM(status='success') as success_count,
+              MAX(created_at) as last_import
+         FROM import_logs WHERE store_id=?`,
+      [req.user.store_id]
+    );
+    res.json({
+      total_files: stats.total_files || 0,
+      success_count: stats.success_count || 0,
+      total_size: stats.total_size || 0,
+      last_import: stats.last_import
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Gagal mengambil statistik import', error: error.message });
   } finally {
     if (conn) await conn.end();
   }
