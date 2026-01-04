@@ -180,6 +180,7 @@ CREATE TABLE transaction_items (
   product_id INT(11) DEFAULT NULL,
   qty INT(11) NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  cost_price DECIMAL(10,2) NOT NULL DEFAULT 0
   subtotal DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

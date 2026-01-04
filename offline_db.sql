@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   product_id INTEGER DEFAULT NULL,
   qty INTEGER NOT NULL,
   price REAL NOT NULL,
+  cost_price REAL NOT NULL DEFAULT 0,
   subtotal REAL NOT NULL,
   FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
   FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
