@@ -10,15 +10,12 @@ const stream = require('stream');
 
 function toMySQLDatetime(dt) {
   if (!dt) return null;
-  // Jika sudah format MySQL, langsung return
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) return dt;
-  // Jika ISO string (ada T dan Z), konversi
   if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
     const d = new Date(dt);
     if (isNaN(d)) return null;
     return d.toISOString().slice(0, 19).replace('T', ' ');
   }
-  // Jika Date object atau string lain
   const d = new Date(dt);
   if (isNaN(d)) return null;
   return d.toISOString().slice(0, 19).replace('T', ' ');
@@ -288,7 +285,7 @@ exports.importData = async (req, res) => {
           `INSERT INTO users (id, owner_id, store_id, name, username, password, role, is_active, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE name=VALUES(name), username=VALUES(username), role=VALUES(role), is_active=VALUES(is_active)`,
-          [user.id, user.owner_id, user.store_id, user.name, user.username, user.password, user.role, user.is_active, excelDateToMySQLDatetime(user.created_at)]
+          [user.id, user.owner_id, user.store_id, user.name, user.username, user.password, user.role, user.is_active, toMySQLDatetime(user.created_at)]
         );
       }
     }
@@ -302,7 +299,7 @@ exports.importData = async (req, res) => {
           [
             product.id, product.store_id, product.name, product.sku, product.barcode, product.price, product.cost_price, product.stock,
             product.category, product.description, product.image_url, product.is_active,
-            excelDateToMySQLDatetime(product.created_at), excelDateToMySQLDatetime(product.updated_at),
+            toMySQLDatetime(product.created_at), toMySQLDatetime(product.updated_at),
             product.jenis_diskon, product.nilai_diskon, product.diskon_bundle_min_qty, product.diskon_bundle_value, product.buy_qty, product.free_qty
           ]
         );
@@ -315,7 +312,7 @@ exports.importData = async (req, res) => {
           `INSERT INTO transactions (id, store_id, user_id, total_cost, payment_type, payment_method, received_amount, change_amount, customer_name, customer_phone, payment_status, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE total_cost=VALUES(total_cost), payment_status=VALUES(payment_status), updated_at=VALUES(updated_at)`,
-          [trx.id, trx.store_id, trx.user_id, trx.total_cost, trx.payment_type, trx.payment_method, trx.received_amount, trx.change_amount, trx.customer_name, trx.customer_phone, trx.payment_status, excelDateToMySQLDatetime(trx.created_at), excelDateToMySQLDatetime(trx.updated_at)]
+          [trx.id, trx.store_id, trx.user_id, trx.total_cost, trx.payment_type, trx.payment_method, trx.received_amount, trx.change_amount, trx.customer_name, trx.customer_phone, trx.payment_status, toMySQLDatetime(trx.created_at), toMySQLDatetime(trx.updated_at)]
         );
       }
     }
