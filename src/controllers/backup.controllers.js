@@ -43,6 +43,11 @@ function excelDateToMySQLDatetime(serial) {
   return null;
 }
 
+function normalizeNull(val) {
+  // Ubah '' atau undefined jadi null, biarkan 0 dan angka tetap
+  return (val === '' || val === undefined) ? null : val;
+}
+
 exports.exportData = async (req, res) => {
   let conn;
   try {
@@ -300,7 +305,7 @@ exports.importData = async (req, res) => {
             product.id, product.store_id, product.name, product.sku, product.barcode, product.price, product.cost_price, product.stock,
             product.category, product.description, product.image_url, product.is_active,
             toMySQLDatetime(product.created_at), toMySQLDatetime(product.updated_at),
-            product.jenis_diskon, product.nilai_diskon, product.diskon_bundle_min_qty, product.diskon_bundle_value, product.buy_qty, product.free_qty
+            product.jenis_diskon, product.nilai_diskon, normalizeNull(product.diskon_bundle_min_qty), normalizeNull(product.diskon_bundle_value), normalizeNull(product.buy_qty), normalizeNull(product.free_qty)
           ]
         );
       }
