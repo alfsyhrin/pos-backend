@@ -79,7 +79,6 @@ const ReportController = {
     : 0;
 
 const margin = `${marginValue.toFixed(2)}%`;
-port
 
       return response.success(res, {
         total_transaksi: summary[0].total_transaksi,
