@@ -24,10 +24,13 @@ exports.exportData = async (req, res) => {
     conn = await getTenantConnection(dbName);
 
     // Ambil parameter dari frontend
-    const dataParam = (req.query.data || 'all').toLowerCase();
+    let dataParam = (req.query.data || 'all').toLowerCase();
     const typeParam = (req.query.type || 'json').toLowerCase();
     const startDate = req.query.start_date;
     const endDate = req.query.end_date;
+
+    // Multi-data support
+    const dataList = dataParam.split(',').map(x => x.trim()).filter(Boolean);
 
     // Helper untuk filter tanggal
     function buildDateFilter(field) {
@@ -37,36 +40,74 @@ exports.exportData = async (req, res) => {
       return '';
     }
 
+    // Mapping kategori ke query
+    const dataMap = {
+      'karyawan': async () => {
+        const [users] = await conn.query('SELECT * FROM users WHERE role != "owner"');
+        return { users };
+      },
+      'users': async () => {
+        const [users] = await conn.query('SELECT * FROM users WHERE role != "owner"');
+        return { users };
+      },
+      'produk': async () => {
+        const [products] = await conn.query('SELECT * FROM products');
+        return { products };
+      },
+      'products': async () => {
+        const [products] = await conn.query('SELECT * FROM products');
+        return { products };
+      },
+      'transaksi': async () => {
+        const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
+        const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
+        return { transactions, transaction_items };
+      },
+      'transactions': async () => {
+        const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
+        const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
+        return { transactions, transaction_items };
+      },
+      'item_transaksi': async () => {
+        const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+        return { transaction_items };
+      },
+      'transaction_items': async () => {
+        const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
+        return { transaction_items };
+      },
+      'pelanggan': async () => {
+        const [customers] = await conn.query('SELECT * FROM customers');
+        return { customers };
+      },
+      'customers': async () => {
+        const [customers] = await conn.query('SELECT * FROM customers');
+        return { customers };
+      }
+    };
+
     let data = {};
+
     if (dataParam === 'all') {
+      // Semua data
       const [users] = await conn.query('SELECT * FROM users');
       const [products] = await conn.query('SELECT * FROM products');
       const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
       const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
       data = { users, products, transactions, transaction_items };
-    } else if (dataParam === 'produk' || dataParam === 'products') {
-      const [products] = await conn.query('SELECT * FROM products');
-      data = { products };
-    } else if (dataParam === 'transaksi' || dataParam === 'transactions') {
-      const [transactions] = await conn.query(`SELECT * FROM transactions ${buildDateFilter('created_at')}`);
-      const [transaction_items] = await conn.query(`SELECT * FROM transaction_items`);
-      data = { transactions, transaction_items };
-    } else if (dataParam === 'karyawan' || dataParam === 'users') {
-      const [users] = await conn.query('SELECT * FROM users WHERE role != "owner"');
-      data = { users };
-    } else if (dataParam === 'pelanggan' || dataParam === 'customers') {
-      const [customers] = await conn.query('SELECT * FROM customers');
-      data = { customers };
-    } else if (dataParam === 'item_transaksi' || dataParam === 'transaction_items') {
-      const [transaction_items] = await conn.query('SELECT * FROM transaction_items');
-      data = { transaction_items };
-    } else {
-      return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
-    }
-
-    // === ZIP EXPORT FOR ALL DATA ===
-    if (dataParam === 'all' && (typeParam === 'excel' || typeParam === 'xlsx' || typeParam === 'csv' || typeParam === 'json')) {
-      res.setHeader('Content-Disposition', `attachment; filename=backup_all_${typeParam}_${Date.now()}.zip`);
+    } else if (dataList.length > 1) {
+      // Multi-data, hasilkan ZIP
+      for (const key of dataList) {
+        if (dataMap[key]) {
+          const result = await dataMap[key]();
+          Object.assign(data, result);
+        }
+      }
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
+      }
+      // ZIP export
+      res.setHeader('Content-Disposition', `attachment; filename=backup_multi_${typeParam}_${Date.now()}.zip`);
       res.setHeader('Content-Type', 'application/zip');
       const archive = archiver('zip');
       archive.pipe(res);
@@ -92,14 +133,18 @@ exports.exportData = async (req, res) => {
         archive.append(buffer, { name: filename });
       }
       archive.finalize();
-      // archiver akan handle res.end()
       await ActivityLogModel.create(conn, {
         user_id: req.user.id,
         store_id: req.user.store_id || null,
         action: 'backup_data',
-        detail: `Backup data kategori ${dataParam} dalam format zip (${typeParam})`
+        detail: `Backup data kategori ${dataList.join(',')} dalam format zip (${typeParam})`
       });
       return;
+    } else if (dataMap[dataParam]) {
+      // Single data
+      data = await dataMap[dataParam]();
+    } else {
+      return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
     }
 
     // === SINGLE FILE EXPORT ===
