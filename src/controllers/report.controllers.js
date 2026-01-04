@@ -1,6 +1,6 @@
 const { getTenantConnection } = require('../config/db');
 const response = require('../utils/response');
-const ActivityLogModel = require('../models/activityLogModel');
+const ActivityLogModel = require('../models/activityLog.model');
 
 
 const ReportController = {
