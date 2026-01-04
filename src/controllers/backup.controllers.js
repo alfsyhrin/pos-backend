@@ -10,7 +10,15 @@ const stream = require('stream');
 
 function toMySQLDatetime(dt) {
   if (!dt) return null;
+  // Jika sudah format MySQL, langsung return
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) return dt;
+  // Jika ISO string (ada T dan Z), konversi
+  if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
+    const d = new Date(dt);
+    if (isNaN(d)) return null;
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  // Jika Date object atau string lain
   const d = new Date(dt);
   if (isNaN(d)) return null;
   return d.toISOString().slice(0, 19).replace('T', ' ');
