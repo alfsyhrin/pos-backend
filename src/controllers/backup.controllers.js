@@ -48,6 +48,12 @@ function normalizeNull(val) {
   return (val === '' || val === undefined) ? null : val;
 }
 
+function normalizeNumericFields(obj, numericFields) {
+  for (const key of numericFields) {
+    if (obj[key] === '' || obj[key] === undefined) obj[key] = null;
+  }
+}
+
 exports.exportData = async (req, res) => {
   let conn;
   try {
@@ -296,7 +302,12 @@ exports.importData = async (req, res) => {
     }
     // Import products
     if (data.products) {
+      const numericFields = [
+        'price', 'cost_price', 'stock', 'nilai_diskon', 'diskon_bundle_min_qty',
+        'diskon_bundle_value', 'buy_qty', 'free_qty'
+      ];
       for (const product of data.products) {
+        normalizeNumericFields(product, numericFields);
         await conn.query(
           `INSERT INTO products (id, store_id, name, sku, barcode, price, cost_price, stock, category, description, image_url, is_active, created_at, updated_at, jenis_diskon, nilai_diskon, diskon_bundle_min_qty, diskon_bundle_value, buy_qty, free_qty)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -305,7 +316,7 @@ exports.importData = async (req, res) => {
             product.id, product.store_id, product.name, product.sku, product.barcode, product.price, product.cost_price, product.stock,
             product.category, product.description, product.image_url, product.is_active,
             toMySQLDatetime(product.created_at), toMySQLDatetime(product.updated_at),
-            product.jenis_diskon, product.nilai_diskon, normalizeNull(product.diskon_bundle_min_qty), normalizeNull(product.diskon_bundle_value), normalizeNull(product.buy_qty), normalizeNull(product.free_qty)
+            product.jenis_diskon, product.nilai_diskon, product.diskon_bundle_min_qty, product.diskon_bundle_value, product.buy_qty, product.free_qty
           ]
         );
       }
