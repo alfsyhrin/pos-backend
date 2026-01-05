@@ -33,12 +33,14 @@ if (!store_id) {
   throw new Error('store_id wajib ada untuk logging');
 }
 
+// Logging aktivitas: update owner
 await ActivityLogModel.create(conn, {
   user_id: req.user.id || null,
-  store_id,
+  store_id: req.user.store_id || null, // biarkan null kalau tidak ada
   action: 'update_owner',
   detail: `Update data owner: ${id}`
 });
+
 
 
       const updated = await OwnerModel.getById(conn, id);
