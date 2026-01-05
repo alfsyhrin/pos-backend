@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
 import '../shared/app_colors.dart';
 
 // Services & models (realtime)
@@ -8,15 +13,29 @@ import '../services/product_service.dart';
 import '../services/transaction_service.dart';
 
 /// =====================
-/// COMPAT: Product.isDraft
+/// COMPAT EXTENSIONS
 /// =====================
-/// FIX untuk error:
-/// "The getter 'isDraft' isn't defined for the type 'Product'."
-///
-/// Karena model Product Anda belum punya isDraft,
-/// extension ini membuatnya selalu tersedia (default: false).
+/// Tujuan: menghindari crash/compile error jika field belum ada di model Anda.
+/// Jika nantinya Anda sudah menambahkan field aslinya, extension ini bisa dihapus.
+
 extension ProductDraftCompat on Product {
   bool get isDraft => false;
+}
+
+/// Modal/HPP per unit (kalau model Product Anda belum punya, default 0).
+/// Silakan sesuaikan mapping-nya kalau field Anda beda nama (mis. buyPrice, hpp, cost, modal).
+extension ProductCostCompat on Product {
+  int get costPrice {
+    // Jika Anda punya field lain, ganti return-nya sesuai kebutuhan.
+    return 0;
+  }
+}
+
+/// Diskon transaksi (kalau TransactionData Anda belum punya, default 0).
+extension TransactionDiscountCompat on TransactionData {
+  int get discountAmount {
+    return 0;
+  }
 }
 
 class ReportScreen extends StatefulWidget {
@@ -91,6 +110,262 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  Future<void> _exportProfitLossPdf({
+    required _ReportData data,
+    required List<TransactionData> filteredTx,
+    required List<Product> products,
+  }) async {
+    try {
+      final doc = pw.Document();
+
+      final monthsText = _selectedMonths.isEmpty
+          ? 'Semua Bulan'
+          : (_selectedMonths.toList()..sort())
+          .map((m) => _FilterPanelContent._monthShort(m))
+          .join(', ');
+
+      final titleStyle = pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold);
+      final hStyle = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
+      final small = pw.TextStyle(fontSize: 9, color: PdfColors.grey700);
+
+      pw.Widget kpiBox({
+        required String label,
+        required String value,
+      }) {
+        return pw.Container(
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColors.grey300),
+            borderRadius: pw.BorderRadius.circular(8),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(label, style: small),
+              pw.SizedBox(height: 4),
+              pw.Text(value, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        );
+      }
+
+      pw.TableRow row2(String a, String b) {
+        return pw.TableRow(
+          children: [
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+              child: pw.Text(a, style: pw.TextStyle(fontSize: 10)),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+              child: pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Text(b, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              ),
+            ),
+          ],
+        );
+      }
+
+      pw.Widget sectionTitle(String t) => pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 10, bottom: 6),
+        child: pw.Text(t, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+      );
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.fromLTRB(28, 28, 28, 28),
+          build: (context) {
+            return [
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('Laporan Laba Rugi', style: titleStyle),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Periode Filter: Tahun $_selectedYear • Bulan: $monthsText', style: small),
+                        pw.Text('Sumber data: TransactionService & ProductService (realtime)', style: small),
+                        pw.Text('Tanggal Export: ${DateTime.now().toLocal()}', style: small),
+                      ],
+                    ),
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Text(
+                      'TOTAL TX: ${data.totalTransactions}',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // KPI ringkas
+              pw.Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  kpiBox(label: 'Pendapatan (Gross)', value: data.totalRevenueLabel),
+                  kpiBox(label: 'Diskon', value: data.totalDiscountLabel),
+                  kpiBox(label: 'Pendapatan Bersih', value: data.netRevenueLabel),
+                  kpiBox(label: 'Modal/HPP', value: data.totalCostLabel),
+                  kpiBox(label: 'Laba Bersih', value: data.netProfitLabel),
+                  kpiBox(label: 'Margin', value: data.marginPct),
+                ],
+              ),
+
+              pw.SizedBox(height: 14),
+
+              // Tabel laba rugi
+              sectionTitle('Ringkasan Laba Rugi'),
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(3),
+                  1: const pw.FlexColumnWidth(2),
+                },
+                children: [
+                  row2('Pendapatan (Gross)', data.totalRevenueLabel),
+                  row2('Diskon', data.totalDiscountLabel),
+                  row2('Pendapatan Bersih', data.netRevenueLabel),
+                  row2('Modal/HPP (estimasi)', data.totalCostLabel),
+                  row2('Laba Kotor', data.grossProfitLabel),
+                  row2('Biaya Operasional', data.operationalCostLabel),
+                  row2('Laba Bersih', data.netProfitLabel),
+                ],
+              ),
+              pw.SizedBox(height: 6),
+              pw.Text(
+                'Catatan: Jika model Anda belum menyimpan diskon dan HPP/modal, sistem memakai default 0. '
+                    'Untuk hasil akurat, tambahkan field diskon pada transaksi dan costPrice/modal pada produk.',
+                style: small,
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // Top produk
+              sectionTitle('Top Produk (berdasarkan transaksi pada periode filter)'),
+              data.topProducts.isEmpty
+                  ? pw.Text('Belum ada transaksi pada periode ini.', style: small)
+                  : pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(28),
+                  1: const pw.FlexColumnWidth(3),
+                  2: const pw.FlexColumnWidth(2),
+                  3: const pw.FlexColumnWidth(2),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('#', style: hStyle)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Produk', style: hStyle)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Terjual', style: hStyle)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Pendapatan', style: hStyle)),
+                    ],
+                  ),
+                  ...data.topProducts.take(10).toList().asMap().entries.map((e) {
+                    final idx = e.key + 1;
+                    final p = e.value;
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('$idx')),
+                        pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text('${p.name}\nSKU: ${p.sku}', style: pw.TextStyle(fontSize: 9))),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text('${p.sold}')),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(p.revenueLabel)),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // Low stock
+              sectionTitle('Stok Menipis (ambang: 5)'),
+              data.lowStocks.isEmpty
+                  ? pw.Text('Tidak ada stok menipis pada ambang saat ini.', style: small)
+                  : pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(3),
+                  1: const pw.FlexColumnWidth(1),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Produk', style: hStyle)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sisa', style: hStyle)),
+                    ],
+                  ),
+                  ...data.lowStocks.map((s) {
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(s.name)),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text('${s.remaining}')),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // Statistik harian
+              sectionTitle('Statistik Harian (periode filter)'),
+              pw.Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  kpiBox(label: 'Penjualan Harian Tertinggi', value: data.bestSalesLabel),
+                  kpiBox(label: 'Penjualan Harian Terendah', value: data.lowestSalesLabel),
+                  kpiBox(label: 'Rata-rata Harian', value: data.avgDailyLabel),
+                ],
+              ),
+            ];
+          },
+        ),
+      );
+
+      final fileName = 'Laporan_LabaRugi_${_selectedYear}_${monthsText.replaceAll(' ', '').replaceAll(',', '_')}.pdf';
+
+      await Printing.layoutPdf(
+        name: fileName,
+        onLayout: (PdfPageFormat format) async => doc.save(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal export PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final body = Container(
@@ -131,9 +406,21 @@ class _ReportScreenState extends State<ReportScreen> {
                       _TopTabs(
                         tabIndex: _tabIndex,
                         onTabChanged: (i) => setState(() => _tabIndex = i),
-                        onExport: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Export masih stub (belum dihubungkan)')),
+                        onExport: () async {
+                          final txList = TransactionService.instance.transactions.value;
+                          final filteredTx = txList.where(_txMatchesFilter).toList();
+                          final products = ProductService.instance.notifier.value;
+
+                          final data = _ReportData.fromServices(
+                            transactions: filteredTx,
+                            products: products,
+                            lowStockThreshold: 5,
+                          );
+
+                          await _exportProfitLossPdf(
+                            data: data,
+                            filteredTx: filteredTx,
+                            products: products,
                           );
                         },
                         showFilterButton: !isWide,
@@ -212,14 +499,18 @@ class _ReportScreenState extends State<ReportScreen> {
 class _ReportData {
   // Finance dashboard
   final int cashIn;
-  final int cashOut; // belum tersedia dari model -> default 0
+  final int cashOut;
   final int balance;
   final double inRatio;
 
   // Laporan keuangan
   final int totalRevenue;
-  final int totalCost; // belum tersedia dari model -> default 0
-  final int netProfit; // revenue - cost
+  final int totalDiscount;
+  final int netRevenue; // totalRevenue - totalDiscount
+  final int totalCost; // HPP/Modal dari produk
+  final int grossProfit; // netRevenue - totalCost
+  final int operationalCost; // Default 0
+  final int netProfit; // grossProfit - operationalCost
   final int avgTicket;
   final int totalTransactions;
   final String marginPct;
@@ -243,7 +534,11 @@ class _ReportData {
     required this.balance,
     required this.inRatio,
     required this.totalRevenue,
+    required this.totalDiscount,
+    required this.netRevenue,
     required this.totalCost,
+    required this.grossProfit,
+    required this.operationalCost,
     required this.netProfit,
     required this.avgTicket,
     required this.totalTransactions,
@@ -257,19 +552,43 @@ class _ReportData {
     required this.karyawanTopTitle,
   });
 
-  static _ReportData fromServices({
+  factory _ReportData.fromServices({
     required List<TransactionData> transactions,
     required List<Product> products,
     int lowStockThreshold = 5,
   }) {
     // Revenue & tx count
     final totalRevenue = transactions.fold<int>(0, (s, tx) => s + tx.total.round());
+    final totalDiscount = transactions.fold<int>(0, (s, tx) => s + tx.discountAmount);
+    final netRevenue = totalRevenue - totalDiscount;
     final totalTx = transactions.length;
     final avgTicket = totalTx == 0 ? 0 : (totalRevenue / totalTx).round();
 
-    // Cost & profit (model transaksi belum menyimpan HPP)
-    final totalCost = 0;
-    final netProfit = totalRevenue - totalCost;
+    // Hitung HPP/Modal dari produk yang terjual
+    int totalCost = 0;
+    final productMap = <String, Product>{};
+    for (final p in products) {
+      productMap[p.sku] = p;
+    }
+
+    // Agregasi item untuk menghitung modal
+    for (final tx in transactions) {
+      for (final item in tx.items) {
+        final product = productMap[item.sku];
+        if (product != null) {
+          // Gunakan costPrice dari produk dan konversi ke int
+          // Menggunakan .toInt() untuk mengonversi dari double ke int
+          final cost = product.costPrice is double
+              ? (product.costPrice as double).toInt()
+              : product.costPrice as int;
+          totalCost += (cost * item.qty);
+        }
+      }
+    }
+
+    final grossProfit = netRevenue - totalCost;
+    final operationalCost = 0; // Default, bisa diisi dari data lain
+    final netProfit = grossProfit - operationalCost;
     final marginPct = totalRevenue <= 0
         ? '0%'
         : (((netProfit / totalRevenue) * 100).round()).toString() + '%';
@@ -340,7 +659,11 @@ class _ReportData {
       balance: balance,
       inRatio: inRatio,
       totalRevenue: totalRevenue,
+      totalDiscount: totalDiscount,
+      netRevenue: netRevenue,
       totalCost: totalCost,
+      grossProfit: grossProfit,
+      operationalCost: operationalCost,
       netProfit: netProfit,
       avgTicket: avgTicket,
       totalTransactions: totalTx,
@@ -362,12 +685,17 @@ class _ReportData {
     return '$y-$m-$d';
   }
 
+  // Getter untuk labels
   String get cashInLabel => formatRupiahInt(cashIn);
   String get cashOutLabel => formatRupiahInt(cashOut);
   String get balanceLabel => formatRupiahInt(balance);
 
   String get totalRevenueLabel => formatRupiahInt(totalRevenue);
+  String get totalDiscountLabel => formatRupiahInt(totalDiscount);
+  String get netRevenueLabel => formatRupiahInt(netRevenue);
   String get totalCostLabel => formatRupiahInt(totalCost);
+  String get grossProfitLabel => formatRupiahInt(grossProfit);
+  String get operationalCostLabel => formatRupiahInt(operationalCost);
   String get netProfitLabel => formatRupiahInt(netProfit);
   String get avgTicketLabel => formatRupiahInt(avgTicket);
 
@@ -852,18 +1180,39 @@ class _OverviewView extends StatelessWidget {
                 icon: Icons.payments_rounded,
               ),
               _MetricListItem(
-                title: 'TOTAL BIAYA (HPP)',
+                title: 'DISKON',
+                value: data.totalDiscountLabel,
+                subtitle: 'Total diskon yang diberikan',
+                accent: Colors.orange,
+                icon: Icons.discount_rounded,
+              ),
+              _MetricListItem(
+                title: 'PENDAPATAN BERSIH',
+                value: data.netRevenueLabel,
+                subtitle: 'Setelah diskon',
+                accent: kMaroon,
+                icon: Icons.account_balance_wallet_rounded,
+              ),
+              _MetricListItem(
+                title: 'MODAL/HPP',
                 value: data.totalCostLabel,
-                subtitle: 'Belum tersedia (model transaksi tidak menyimpan HPP)',
+                subtitle: 'Estimasi biaya produksi',
                 accent: kSecondary,
                 icon: Icons.trending_down_rounded,
+              ),
+              _MetricListItem(
+                title: 'LABA KOTOR',
+                value: data.grossProfitLabel,
+                subtitle: 'Pendapatan bersih - modal',
+                accent: Colors.green,
+                icon: Icons.show_chart_rounded,
               ),
               _MetricListItem(
                 title: 'LABA BERSIH',
                 value: data.netProfitLabel,
                 subtitle: 'Margin ${data.marginPct}',
                 accent: kMaroon,
-                icon: Icons.show_chart_rounded,
+                icon: Icons.attach_money_rounded,
               ),
               _MetricListItem(
                 title: 'RATA-RATA TRANSAKSI',
@@ -1675,7 +2024,8 @@ class _MetricRowCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(color: kTextMuted, fontWeight: FontWeight.w900, fontSize: 12)),
+                Text(item.title,
+                    style: const TextStyle(color: kTextMuted, fontWeight: FontWeight.w900, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(item.value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
                 const SizedBox(height: 2),
@@ -1755,7 +2105,9 @@ class _SummaryPill extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  Text(title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
                   const SizedBox(height: 2),
                   Text(subtitle, style: const TextStyle(color: kTextMuted, fontWeight: FontWeight.w800, fontSize: 11)),

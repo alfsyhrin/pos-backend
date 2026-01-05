@@ -12,7 +12,8 @@ Dibangun dengan Node.js, Express, dan MySQL.
 - Sistem paket berlangganan (subscription)
 - Otentikasi JWT
 - Validasi input & error handling
-- Siap untuk integrasi dengan aplikasi mobile (Flutter)
+- Siap untuk integrasi dengan aplikasi mobile (Flutter) & Electron JS
+- **Fitur Laporan/Report lengkap dengan filter waktu dan laporan persisten**
 
 ---
 
@@ -34,6 +35,7 @@ validations/
 ## Environment Variables
 
 Buat file `.env` di root project:
+```
 PORT=5000
 NODE_ENV=development
 DB_HOST=localhost
@@ -44,6 +46,7 @@ DB_NAME=kasir_multi_tenant
 JWT_SECRET=your_super_secret_jwt_key
 JWT_EXPIRE=1d
 BCRYPT_SALT_ROUNDS=10
+```
 
 ---
 
@@ -63,6 +66,242 @@ BCRYPT_SALT_ROUNDS=10
     ```
 
 ---
+
+## REPORTS (LAPORAN)
+
+### 1. Summary Laporan Keuangan
+- **GET** `/api/stores/:store_id/reports/summary?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `start`: tanggal mulai (format YYYY-MM-DD)
+    - `end`: tanggal akhir (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "total_transaksi": 123,
+        "total_pendapatan": 15000000,
+        "total_diskon": 500000,
+        "net_revenue": 14500000,
+        "total_hpp": 9000000,
+        "gross_profit": 5500000,
+        "operational_cost": 0,
+        "net_profit": 5500000,
+        "margin": "37%",
+        "best_sales_day": 2500000,
+        "lowest_sales_day": 100000,
+        "avg_daily": 500000,
+        "top_products": [
+          {
+            "product_id": 1,
+            "sku": "SKU001",
+            "name": "Produk A",
+            "sold": 50,
+            "revenue": 500000
+          }
+        ],
+        "stok_menipis": [
+          {
+            "id": 2,
+            "name": "Produk B",
+            "remaining": 3
+          }
+        ]
+      }
+    }
+    ```
+
+### 2. Laporan Produk
+- **GET** `/api/stores/:store_id/reports/products?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `start`: tanggal mulai (format YYYY-MM-DD)
+    - `end`: tanggal akhir (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "total_products": 120,
+        "total_sold": 350,
+        "top_products": [
+          {
+            "product_id": 1,
+            "sku": "SKU001",
+            "name": "Produk A",
+            "sold": 50,
+            "revenue": 500000
+          }
+        ],
+        "stok_menipis": [
+          {
+            "id": 2,
+            "name": "Produk B",
+            "remaining": 3
+          }
+        ],
+        "stok_habis": 4
+      }
+    }
+    ```
+
+### 3. Laporan Karyawan/Kasir
+- **GET** `/api/stores/:store_id/reports/cashiers?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `start`: tanggal mulai (format YYYY-MM-DD)
+    - `end`: tanggal akhir (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "total_karyawan": 5,
+        "avg_performance": 20,
+        "avg_attendance": 98.5,
+        "cashiers": [
+          {
+            "id": 1,
+            "name": "Kasir A",
+            "role": "cashier",
+            "total_transaksi": 30,
+            "total_penjualan": 1500000
+          }
+        ]
+      }
+    }
+    ```
+
+### 4. Generate & Simpan Laporan Harian
+- **POST** `/api/stores/:store_id/reports/daily/generate?date=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `date`: tanggal laporan (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "message": "Laporan harian berhasil disimpan."
+      }
+    }
+    ```
+
+### 5. Ambil Laporan Harian
+- **GET** `/api/stores/:store_id/reports/daily?date=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `date`: tanggal laporan (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": 1,
+        "store_id": 1,
+        "report_date": "2025-12-16",
+        "total_transactions": 20,
+        "total_income": 2000000,
+        "total_discount": 50000,
+        "net_revenue": 1950000,
+        "total_hpp": 1200000,
+        "gross_profit": 750000,
+        "operational_cost": 0,
+        "net_profit": 750000,
+        "margin": "38%",
+        "best_sales_day": 2000000,
+        "lowest_sales_day": 2000000,
+        "avg_daily": 2000000,
+        "created_at": "2025-12-16T23:59:59"
+      }
+    }
+    ```
+
+### 6. List Laporan Harian (Rentang Waktu)
+- **GET** `/api/stores/:store_id/reports/daily/list?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `start`: tanggal mulai (format YYYY-MM-DD)
+    - `end`: tanggal akhir (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "id": 1,
+          "store_id": 1,
+          "report_date": "2025-12-16",
+          "total_transactions": 20,
+          "total_income": 2000000,
+          "total_discount": 50000,
+          "net_revenue": 1950000,
+          "total_hpp": 1200000,
+          "gross_profit": 750000,
+          "operational_cost": 0,
+          "net_profit": 750000,
+          "margin": "38%",
+          "best_sales_day": 2000000,
+          "lowest_sales_day": 2000000,
+          "avg_daily": 2000000,
+          "created_at": "2025-12-16T23:59:59"
+        }
+      ]
+    }
+    ```
+
+### 7. Laporan Periodik (Mingguan/Bulanan/Tahunan)
+- **GET** `/api/stores/:store_id/reports/periodic?type=weekly|monthly|yearly&start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - **Headers:** Authorization: Bearer {token}
+  - **Query Params:**
+    - `type`: weekly, monthly, yearly
+    - `start`: tanggal mulai (format YYYY-MM-DD)
+    - `end`: tanggal akhir (format YYYY-MM-DD)
+  - **Response:**
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "period_start": "2025-12-01",
+          "period_end": "2025-12-07",
+          "total_transactions": 100,
+          "total_income": 10000000,
+          "total_discount": 200000,
+          "net_revenue": 9800000,
+          "total_hpp": 6000000,
+          "gross_profit": 3800000,
+          "operational_cost": 0,
+          "net_profit": 3800000
+        }
+      ]
+    }
+    ```
+
+---
+
+### Mapping Filter Frontend ke Backend
+
+| Filter Frontend | start (YYYY-MM-DD) | end (YYYY-MM-DD)   |
+|-----------------|--------------------|--------------------|
+| Hari ini        | hari ini           | hari ini           |
+| 7 hari          | hari ini - 6 hari  | hari ini           |
+| 30 hari         | hari ini - 29 hari | hari ini           |
+| 1 tahun         | hari ini - 1 tahun | hari ini           |
+| Semua data      | tanggal awal data  | hari ini           |
+
+---
+
+### Database
+
+- **Cukup 1 database per tenant/client** (multi-tenant).
+- **Tabel utama untuk report:** `reports_daily` (sudah sesuai skema yang Anda punya).
+
+---
+
+**Dokumentasi ini siap digunakan untuk frontend Electron JS dan Flutter.  
+Jika ada kebutuhan field tambahan, tinggal extend response di backend.**
 
 ### USERS (Manajemen Karyawan/Admin/Kasir)
 
@@ -120,7 +359,46 @@ BCRYPT_SALT_ROUNDS=10
 - **GET** `/api/owners/:id`
   - **Headers:** Authorization: Bearer {token}
   - **Response:** Owner object
-
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "business_name": "PT Sukses Jaya",
+    "email": "owner@email.com",
+    "phone": "08123456789",
+    "address": "Jl. Bisnis No. 1",
+    "created_at": "2025-12-01 10:22:11"
+  }
+}
+```
+#### Update Owner Info (Edit Profil Bisnis)
+**PUT** `/api/owners/:id`
+**Headers:** Authorization: Bearer {token}
+Body:
+```json
+{
+  "business_name": "PT Sukses Jaya",
+  "email": "owner@email.com",
+  "phone": "08123456789",
+  "address": "Jl. Bisnis No. 1"
+}
+```
+- response
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "business_name": "PT Sukses Jaya",
+    "email": "owner@email.com",
+    "phone": "08123456789",
+    "address": "Jl. Bisnis No. 1",
+    "created_at": "2025-12-01 10:22:11"
+  },
+  "message": "Owner berhasil diupdate"
+}
+```
 ---
 
 ### STORES (CABANG)

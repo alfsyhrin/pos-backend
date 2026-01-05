@@ -246,9 +246,7 @@ CREATE TABLE `transaction_items` (
   `qty` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `subtotal` decimal(10,2) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `transaction_id` (`transaction_id`),
-  KEY `product_id` (`product_id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

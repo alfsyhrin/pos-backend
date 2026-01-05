@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 -- --------------------------------------------------------
 -- Table: clients
 -- --------------------------------------------------------
-CREATE TABLE clients (
+CREATE TABLE IF NOT EXISTS clients (
   id INT(11) NOT NULL AUTO_INCREMENT,
   owner_id INT(11) DEFAULT NULL,
   user_id INT(11) DEFAULT NULL,
@@ -38,7 +38,9 @@ CREATE TABLE clients (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
 -- Table: import_logs
+-- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS import_logs (
   id INT(11) NOT NULL AUTO_INCREMENT,
   store_id INT(11) DEFAULT NULL,
@@ -53,8 +55,8 @@ CREATE TABLE IF NOT EXISTS import_logs (
 -- --------------------------------------------------------
 -- Table: owners
 -- --------------------------------------------------------
-CREATE TABLE owners (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS owners (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   business_name VARCHAR(255) NOT NULL,
   email VARCHAR(100) NOT NULL,
   phone VARCHAR(20) DEFAULT NULL,
@@ -62,14 +64,16 @@ CREATE TABLE owners (
   package_id INT(11) DEFAULT 1,
   package_expired_at DATETIME DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  address TEXT DEFAULT NULL
+  address TEXT DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: products
 -- --------------------------------------------------------
-CREATE TABLE products (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS products (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   store_id INT(11) NOT NULL,
   name VARCHAR(200) NOT NULL,
   sku VARCHAR(50) DEFAULT NULL,
@@ -95,14 +99,19 @@ CREATE TABLE products (
   diskon_bundle_min_qty INT(11) DEFAULT NULL,
   diskon_bundle_value DECIMAL(10,2) DEFAULT NULL,
   buy_qty INT(11) DEFAULT NULL,
-  free_qty INT(11) DEFAULT NULL
+  free_qty INT(11) DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY sku (sku),
+  KEY idx_store (store_id),
+  KEY idx_sku (sku),
+  KEY idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: stores
 -- --------------------------------------------------------
-CREATE TABLE stores (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS stores (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   type VARCHAR(32) NOT NULL DEFAULT 'store',
   owner_id INT(11) NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -112,39 +121,45 @@ CREATE TABLE stores (
   receipt_template TEXT DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  tax_percentage DECIMAL(5,2) DEFAULT 0
+  tax_percentage DECIMAL(5,2) DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY owner_id (owner_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: struck_receipt
 -- --------------------------------------------------------
-CREATE TABLE struck_receipt (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS struck_receipt (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   store_id INT(11) DEFAULT NULL,
   template_name VARCHAR(100) NOT NULL,
   template_data TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY store_id (store_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: subscriptions
 -- --------------------------------------------------------
-CREATE TABLE subscriptions (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   owner_id INT(11) NOT NULL,
   user_id INT(11) DEFAULT NULL,
   status ENUM('Aktif','Nonaktif') NOT NULL DEFAULT 'Nonaktif',
   plan ENUM('Pro','Standard','Eksklusif') NOT NULL DEFAULT 'Standard',
   start_date DATETIME NOT NULL,
   end_date DATETIME NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY owner_id (owner_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: transactions
 -- --------------------------------------------------------
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id INT(11) NOT NULL AUTO_INCREMENT,
   store_id INT(11) DEFAULT NULL,
   user_id INT(11) DEFAULT NULL,
@@ -168,20 +183,22 @@ CREATE TABLE transactions (
   free_qty INT(11) DEFAULT NULL,
   role VARCHAR(20),
   is_owner BOOLEAN,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  KEY store_id (store_id),
+  KEY user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: transaction_items
 -- --------------------------------------------------------
-CREATE TABLE transaction_items (
+CREATE TABLE IF NOT EXISTS transaction_items (
   id INT(11) NOT NULL AUTO_INCREMENT,
   transaction_id INT(11) NOT NULL,
   product_name VARCHAR(255) DEFAULT NULL,
   product_id INT(11) DEFAULT NULL,
   qty INT(11) NOT NULL,
   price DECIMAL(10,2) NOT NULL,
-  cost_price DECIMAL(10,2) NOT NULL DEFAULT 0
+  cost_price DECIMAL(10,2) NOT NULL DEFAULT 0,  -- ← KOMA DITAMBAH
   subtotal DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -189,8 +206,8 @@ CREATE TABLE transaction_items (
 -- --------------------------------------------------------
 -- Table: users
 -- --------------------------------------------------------
-CREATE TABLE users (
-  id INT(11) NOT NULL,
+CREATE TABLE IF NOT EXISTS users (
+  id INT(11) NOT NULL AUTO_INCREMENT,
   owner_id INT(11) NOT NULL,
   store_id INT(11) DEFAULT NULL,
   name VARCHAR(100) NOT NULL,
@@ -199,13 +216,17 @@ CREATE TABLE users (
   password VARCHAR(255) NOT NULL,
   role ENUM('owner','admin','cashier') DEFAULT 'cashier',
   is_active TINYINT(1) DEFAULT 1,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY username (username),
+  KEY owner_id (owner_id),
+  KEY store_id (store_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 -- Table: reports_daily
 -- --------------------------------------------------------
-CREATE TABLE reports_daily (
+CREATE TABLE IF NOT EXISTS reports_daily (
   id INT(11) NOT NULL AUTO_INCREMENT,
   store_id INT(11) NOT NULL,
   report_date DATE NOT NULL,
@@ -227,58 +248,21 @@ CREATE TABLE reports_daily (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
--- INDEXES
+-- HAPUS SEMUA ALTER TABLE ADD PRIMARY KEY DI BAWAH INI
+-- KARENA SUDAH ADA DI CREATE TABLE
 -- --------------------------------------------------------
-ALTER TABLE clients ADD PRIMARY KEY (id);
-
-ALTER TABLE owners
-  ADD PRIMARY KEY (id),
-  ADD UNIQUE KEY email (email);
-
-ALTER TABLE products
-  ADD PRIMARY KEY (id),
-  ADD UNIQUE KEY sku (sku),
-  ADD KEY idx_store (store_id),
-  ADD KEY idx_sku (sku),
-  ADD KEY idx_active (is_active);
-
-ALTER TABLE stores
-  ADD PRIMARY KEY (id),
-  ADD KEY owner_id (owner_id);
-
-ALTER TABLE struck_receipt
-  ADD PRIMARY KEY (id),
-  ADD KEY store_id (store_id);
-
-ALTER TABLE subscriptions
-  ADD PRIMARY KEY (id),
-  ADD KEY owner_id (owner_id);
-
-ALTER TABLE transactions
-  ADD KEY store_id (store_id),
-  ADD KEY user_id (user_id);
-
-ALTER TABLE users
-  ADD PRIMARY KEY (id),
-  ADD UNIQUE KEY username (username),
-  ADD KEY owner_id (owner_id),
-  ADD KEY store_id (store_id);
-
-ALTER TABLE reports_daily
-  ADD PRIMARY KEY (id),
-  ADD KEY idx_store_date (store_id,report_date);
 
 -- --------------------------------------------------------
--- AUTO_INCREMENT
+-- AUTO_INCREMENT (tidak perlu karena sudah AUTO_INCREMENT di CREATE)
 -- --------------------------------------------------------
-ALTER TABLE clients MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE owners MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE products MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE stores MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE struck_receipt MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE subscriptions MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE users MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE reports_daily MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE clients MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE owners MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE products MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE stores MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE struck_receipt MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE subscriptions MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE users MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
+-- ALTER TABLE reports_daily MODIFY id INT(11) NOT NULL AUTO_INCREMENT;
 
 -- --------------------------------------------------------
 -- FOREIGN KEYS

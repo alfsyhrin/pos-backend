@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../shared/app_colors.dart' as colors;
 import '../widgets/app_bar.dart';
+import '../models/store_model.dart';
+import '../models/user_model.dart';
+import '../models/business_profile_model.dart';
+import '../services/store_settings_service.dart';
+import '../services/token_service.dart';
+import '../services/auth_service.dart';
+import '../services/business_profile_services.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
@@ -45,220 +52,497 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _SettingsBody extends StatelessWidget {
+class _SettingsBody extends StatefulWidget {
   const _SettingsBody();
+
+  @override
+  State<_SettingsBody> createState() => _SettingsBodyState();
+}
+
+class _SettingsBodyState extends State<_SettingsBody> {
+  Store? store;
+  User? user;
+  BusinessProfile? businessProfile;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final token = await TokenService.getToken();
+      if (token == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+      final authService = AuthService();
+      final profileResult = await authService.getProfile(token);
+      if (profileResult['success']) {
+        user = profileResult['user'];
+      }
+      if (user != null && user!.storeId != null) {
+        // Admin/karyawan: ambil info toko
+        final storeResult = await StoreSettingsService.getStoreInfo(user!.storeId.toString(), token);
+        if (storeResult['success']) {
+          store = Store.fromJson(storeResult['data']);
+        }
+      } else if (user != null && user!.isOwner) {
+        // Owner tanpa toko: ambil info bisnis
+        businessProfile = await BusinessProfileService.getProfile(token);
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+    }
+    setState(() => isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.width >= 900;
 
-    // ===== DATA DUMMY (ganti dengan data asli dari DB/API Anda) =====
-    const userEmail = 'rizalsoamole16@gmail.com';
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    // ===== STORE/BUSINESS (sesuai field yang Anda kasih) =====
-    const storeId = '1';
-    const ownerId = '10';
-    const storeName = 'Toko Sukses Jaya';
-    const storeAddress = 'Jl. Contoh No. 123, Jakarta, Indonesia';
-    const storePhone = '+62 812-3456-7890';
-    const receiptTemplate = 'DEFAULT_TEMPLATE_V1';
-    const createdAt = '2025-12-01 10:22:11';
-    const updatedAt = '2025-12-15 19:05:45';
+    if (store != null) {
+      // Tampilkan info toko/cabang
+      return Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isTablet ? 1100 : double.infinity),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 24 : 16,
+                vertical: isTablet ? 18 : 14,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _header(isTablet),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Informasi Toko / Bisnis'),
+                  const SizedBox(height: 10),
+                  _businessCardV2(
+                    isTablet: isTablet,
+                    id: store!.id.toString(),
+                    ownerId: store!.ownerId.toString(),
+                    name: store!.name,
+                    address: store!.address,
+                    phone: store!.phone,
+                    receiptTemplate: store!.receiptTemplate,
+                    createdAt: store!.createdAt,
+                    updatedAt: store!.updatedAt,
+                    onEdit: _editStore,
+                  ),
+                  const SizedBox(height: 18),
+                  _sectionTitle('Akun'),
+                  const SizedBox(height: 10),
+                  _accountCard(email: user?.email ?? 'No email', isTablet: isTablet),
+                  const SizedBox(height: 16),
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: isTablet ? 1100 : double.infinity),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 24 : 16,
-              vertical: isTablet ? 18 : 14,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _header(isTablet),
-                const SizedBox(height: 14),
+                  // =======================
+                  // PLAN & BILLING
+                  // =======================
+                  _sectionTitle('Plan & Billing'),
+                  const SizedBox(height: 10),
+                  _planCard(
+                    planName: 'PRO',
+                    statusText: 'Aktif',
+                    isTablet: isTablet,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Buka halaman Plan (TODO)')),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
 
-                // =======================
-                // AKUN
-                // =======================
-                _sectionTitle('Akun'),
-                const SizedBox(height: 10),
-                _accountCard(
-                  email: userEmail,
-                  isTablet: isTablet,
-                ),
-                const SizedBox(height: 16),
+                  // =======================
+                  // INFORMASI APLIKASI
+                  // =======================
+                  _sectionTitle('Informasi Aplikasi'),
+                  const SizedBox(height: 10),
+                  _infoCard(
+                    isTablet: isTablet,
+                    items: const [
+                      ('Versi Aplikasi', '1.1.8'),
+                      ('Total Produk', '2'),
+                      ('Total Transaksi', '4'),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
 
-                // =======================
-                // INFORMASI TOKO / BISNIS (sesuai schema Anda)
-                // =======================
-                _sectionTitle('Informasi Toko / Bisnis'),
-                const SizedBox(height: 10),
-                _businessCardV2(
-                  isTablet: isTablet,
-                  id: storeId,
-                  ownerId: ownerId,
-                  name: storeName,
-                  address: storeAddress,
-                  phone: storePhone,
-                  receiptTemplate: receiptTemplate,
-                  createdAt: createdAt,
-                  updatedAt: updatedAt,
-                  onEdit: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Edit Informasi Toko (TODO)')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                  _updateAvailableCard(
+                    isTablet: isTablet,
+                    onUpgrade: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Upgrade sekarang (TODO)')),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 18),
 
-                // =======================
-                // PLAN & BILLING
-                // =======================
-                _sectionTitle('Plan & Billing'),
-                const SizedBox(height: 10),
-                _planCard(
-                  planName: 'PRO',
-                  statusText: 'Aktif',
-                  isTablet: isTablet,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Buka halaman Plan (TODO)')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                  // =======================
+                  // WHATSAPP INTEGRATION
+                  // =======================
+                  _sectionTitle('WhatsApp Integration'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'WhatsApp Bot Integration',
+                    subtitle: 'Laporan harian & alert otomatis via WhatsApp (GRATIS!)',
+                    icon: Icons.chat_rounded,
+                    iconColor: const Color(0xFF8B5CF6),
+                    pillText: 'COMING SOON',
+                    pillColor: const Color(0xFF8B5CF6),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
 
-                // =======================
-                // INFORMASI APLIKASI
-                // =======================
-                _sectionTitle('Informasi Aplikasi'),
-                const SizedBox(height: 10),
-                _infoCard(
-                  isTablet: isTablet,
-                  items: const [
-                    ('Versi Aplikasi', '1.1.8'),
-                    ('Total Produk', '2'),
-                    ('Total Transaksi', '4'),
-                  ],
-                ),
-                const SizedBox(height: 14),
+                  // =======================
+                  // DATA
+                  // =======================
+                  _sectionTitle('Data'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Backup Data',
+                    subtitle: 'Simpan data ke file',
+                    icon: Icons.cloud_upload_rounded,
+                    iconColor: const Color(0xFF10B981),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Copy Data',
+                    subtitle: 'Restore data dari file backup',
+                    icon: Icons.cloud_download_rounded,
+                    iconColor: const Color(0xFF3B82F6),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Hapus Semua Data',
+                    subtitle: 'Reset aplikasi ke kondisi awal',
+                    icon: Icons.delete_forever_rounded,
+                    iconColor: const Color(0xFFEF4444),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
 
-                _updateAvailableCard(
-                  isTablet: isTablet,
-                  onUpgrade: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Upgrade sekarang (TODO)')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 18),
+                  // =======================
+                  // TENTANG
+                  // =======================
+                  _sectionTitle('Tentang'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Tentang BetaKasir',
+                    subtitle: 'Aplikasi kasir untuk toko & minimarket',
+                    icon: Icons.info_outline_rounded,
+                    iconColor: colors.kMaroon,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Bantuan & Dukungan',
+                    subtitle: 'Kami siap membantu Anda!',
+                    icon: Icons.support_agent_rounded,
+                    iconColor: colors.kMaroon,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
 
-                // =======================
-                // WHATSAPP INTEGRATION
-                // =======================
-                _sectionTitle('WhatsApp Integration'),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'WhatsApp Bot Integration',
-                  subtitle: 'Laporan harian & alert otomatis via WhatsApp (GRATIS!)',
-                  icon: Icons.chat_rounded,
-                  iconColor: const Color(0xFF8B5CF6),
-                  pillText: 'COMING SOON',
-                  pillColor: const Color(0xFF8B5CF6),
-                  onTap: () {},
-                ),
-                const SizedBox(height: 18),
+                  // =======================
+                  // AKUN & KEAMANAN
+                  // =======================
+                  _sectionTitle('Akun & Keamanan'),
+                  const SizedBox(height: 10),
+                  _logoutCard(
+                    isTablet: isTablet,
+                    onLogout: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Keluar dari akun (TODO)')),
+                      );
+                    },
+                  ),
 
-                // =======================
-                // DATA
-                // =======================
-                _sectionTitle('Data'),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'Backup Data',
-                  subtitle: 'Simpan data ke file',
-                  icon: Icons.cloud_upload_rounded,
-                  iconColor: const Color(0xFF10B981),
-                  onTap: () {},
-                ),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'Copy Data',
-                  subtitle: 'Restore data dari file backup',
-                  icon: Icons.cloud_download_rounded,
-                  iconColor: const Color(0xFF3B82F6),
-                  onTap: () {},
-                ),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'Hapus Semua Data',
-                  subtitle: 'Reset aplikasi ke kondisi awal',
-                  icon: Icons.delete_forever_rounded,
-                  iconColor: const Color(0xFFEF4444),
-                  onTap: () {},
-                ),
-                const SizedBox(height: 18),
+                  const SizedBox(height: 28),
 
-                // =======================
-                // TENTANG
-                // =======================
-                _sectionTitle('Tentang'),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'Tentang BetaKasir',
-                  subtitle: 'Aplikasi kasir untuk toko & minimarket',
-                  icon: Icons.info_outline_rounded,
-                  iconColor: colors.kMaroon,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 10),
-                _tileCard(
-                  title: 'Bantuan & Dukungan',
-                  subtitle: 'Kami siap membantu Anda!',
-                  icon: Icons.support_agent_rounded,
-                  iconColor: colors.kMaroon,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 18),
+                  // =======================
+                  // FAQ
+                  // =======================
+                  _sectionTitle('Pertanyaan Umum'),
+                  const SizedBox(height: 10),
+                  _faqTile(
+                    title: 'Bagaimana cara upgrade?',
+                    subtitle: 'Masuk ke Plan & Billing, lalu pilih paket.',
+                    onTap: () {},
+                  ),
 
-                // =======================
-                // AKUN & KEAMANAN
-                // =======================
-                _sectionTitle('Akun & Keamanan'),
-                const SizedBox(height: 10),
-                _logoutCard(
-                  isTablet: isTablet,
-                  onLogout: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Keluar dari akun (TODO)')),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 28),
-
-                // =======================
-                // FAQ
-                // =======================
-                _sectionTitle('Pertanyaan Umum'),
-                const SizedBox(height: 10),
-                _faqTile(
-                  title: 'Bagaimana cara upgrade?',
-                  subtitle: 'Masuk ke Plan & Billing, lalu pilih paket.',
-                  onTap: () {},
-                ),
-
-                const SizedBox(height: 80),
-              ],
+                  const SizedBox(height: 80),
+                ],
+              ),
             ),
           ),
         ),
+      );
+    } else if (businessProfile != null) {
+      // Tampilkan info bisnis owner
+      return Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isTablet ? 1100 : double.infinity),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 24 : 16,
+                vertical: isTablet ? 18 : 14,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _header(isTablet),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Informasi Bisnis (Owner)'),
+                  const SizedBox(height: 10),
+                  _infoCard(
+                    isTablet: isTablet,
+                    items: [
+                      ('ID', businessProfile!.id.toString()),
+                      ('Owner ID', businessProfile!.ownerId.toString()),
+                      ('Nama Bisnis', businessProfile!.name),
+                      ('Alamat', businessProfile!.address),
+                      ('Telepon', businessProfile!.phone),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _sectionTitle('Akun'),
+                  const SizedBox(height: 10),
+                  _accountCard(email: user?.email ?? 'No email', isTablet: isTablet),
+                  const SizedBox(height: 16),
+
+                  // =======================
+                  // PLAN & BILLING
+                  // =======================
+                  _sectionTitle('Plan & Billing'),
+                  const SizedBox(height: 10),
+                  _planCard(
+                    planName: 'PRO',
+                    statusText: 'Aktif',
+                    isTablet: isTablet,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Buka halaman Plan (TODO)')),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // =======================
+                  // INFORMASI APLIKASI
+                  // =======================
+                  _sectionTitle('Informasi Aplikasi'),
+                  const SizedBox(height: 10),
+                  _infoCard(
+                    isTablet: isTablet,
+                    items: const [
+                      ('Versi Aplikasi', '1.1.8'),
+                      ('Total Produk', '2'),
+                      ('Total Transaksi', '4'),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  _updateAvailableCard(
+                    isTablet: isTablet,
+                    onUpgrade: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Upgrade sekarang (TODO)')),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 18),
+
+                  // =======================
+                  // WHATSAPP INTEGRATION
+                  // =======================
+                  _sectionTitle('WhatsApp Integration'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'WhatsApp Bot Integration',
+                    subtitle: 'Laporan harian & alert otomatis via WhatsApp (GRATIS!)',
+                    icon: Icons.chat_rounded,
+                    iconColor: const Color(0xFF8B5CF6),
+                    pillText: 'COMING SOON',
+                    pillColor: const Color(0xFF8B5CF6),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
+
+                  // =======================
+                  // DATA
+                  // =======================
+                  _sectionTitle('Data'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Backup Data',
+                    subtitle: 'Simpan data ke file',
+                    icon: Icons.cloud_upload_rounded,
+                    iconColor: const Color(0xFF10B981),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Copy Data',
+                    subtitle: 'Restore data dari file backup',
+                    icon: Icons.cloud_download_rounded,
+                    iconColor: const Color(0xFF3B82F6),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Hapus Semua Data',
+                    subtitle: 'Reset aplikasi ke kondisi awal',
+                    icon: Icons.delete_forever_rounded,
+                    iconColor: const Color(0xFFEF4444),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
+
+                  // =======================
+                  // TENTANG
+                  // =======================
+                  _sectionTitle('Tentang'),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Tentang BetaKasir',
+                    subtitle: 'Aplikasi kasir untuk toko & minimarket',
+                    icon: Icons.info_outline_rounded,
+                    iconColor: colors.kMaroon,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 10),
+                  _tileCard(
+                    title: 'Bantuan & Dukungan',
+                    subtitle: 'Kami siap membantu Anda!',
+                    icon: Icons.support_agent_rounded,
+                    iconColor: colors.kMaroon,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 18),
+
+                  // =======================
+                  // AKUN & KEAMANAN
+                  // =======================
+                  _sectionTitle('Akun & Keamanan'),
+                  const SizedBox(height: 10),
+                  _logoutCard(
+                    isTablet: isTablet,
+                    onLogout: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Keluar dari akun (TODO)')),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // =======================
+                  // FAQ
+                  // =======================
+                  _sectionTitle('Pertanyaan Umum'),
+                  const SizedBox(height: 10),
+                  _faqTile(
+                    title: 'Bagaimana cara upgrade?',
+                    subtitle: 'Masuk ke Plan & Billing, lalu pilih paket.',
+                    onTap: () {},
+                  ),
+
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Tidak ada data toko/cabang maupun bisnis
+      return Center(
+        child: Text(
+          'Tidak ada informasi toko atau bisnis yang bisa ditampilkan.\nSilakan buat toko/cabang terlebih dahulu.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+  }
+
+  void _editStore() {
+    if (store == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Store'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: TextEditingController(text: store!.name),
+              decoration: const InputDecoration(labelText: 'Name'),
+              onChanged: (value) => store = store!.copyWith(name: value),
+            ),
+            TextField(
+              controller: TextEditingController(text: store!.address),
+              decoration: const InputDecoration(labelText: 'Address'),
+              onChanged: (value) => store = store!.copyWith(address: value),
+            ),
+            TextField(
+              controller: TextEditingController(text: store!.phone),
+              decoration: const InputDecoration(labelText: 'Phone'),
+              onChanged: (value) => store = store!.copyWith(phone: value),
+            ),
+            TextField(
+              controller: TextEditingController(text: store!.taxPercentage.toString()),
+              decoration: const InputDecoration(labelText: 'Tax Percentage'),
+              keyboardType: TextInputType.number,
+              onChanged: (value) => store = store!.copyWith(taxPercentage: double.tryParse(value) ?? 0.0),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final token = await TokenService.getToken();
+              if (token != null) {
+                final result = await StoreSettingsService.updateStoreInfo(
+                  store!.id.toString(),
+                  store!.name,
+                  store!.address,
+                  store!.phone,
+                  store!.taxPercentage,
+                  token,
+                );
+                if (result['success']) {
+                  setState(() {});
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Store updated successfully')));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: ${result['message']}')));
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

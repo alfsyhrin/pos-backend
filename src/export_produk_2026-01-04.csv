@@ -1,0 +1,5 @@
+"id","store_id","name","sku","barcode","price","cost_price","stock","category","description","image_url","is_active","created_at","updated_at","jenis_diskon","nilai_diskon","diskon_bundle_min_qty","diskon_bundle_value","buy_qty","free_qty"
+90,1,"Akbar","32","2677949727879","10000.00","5000.00",2,"Makanan & Minuman","","uploads/tenant_1/1767331511646-Cuplikan layar 2026-01-02 142425.png",0,"2026-01-01T22:25:12.000Z","2026-01-04T15:07:14.000Z","percentage","5.00",,,,
+93,1,"hahah","jjaja","8999909007000","60000.00","3000.00",6,"Bayi & Anak","hahaj","uploads/tenant_1/1767343896491-1000040583.jpg",1,"2026-01-02T01:51:20.000Z","2026-01-04T15:06:28.000Z","buyxgety",,,,1,2
+95,1,"Fakih","144","CODE-ATLRVWTV","15000.00","6000.00",1,"Kesehatan & Kecantikan","","uploads/tenant_1/1767537111065-1000041633.jpg",0,"2026-01-03T13:25:49.000Z","2026-01-04T15:11:59.000Z","percentage","90.00",,,,
+96,1,"Scanner","677","202412280001","10000.00","8000.00",0,"Elektronik","","uploads/tenant_1/1767446959205-scanner.jpg",1,"2026-01-03T13:29:19.000Z","2026-01-04T15:03:01.000Z",,,,,,
