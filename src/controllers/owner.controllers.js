@@ -28,10 +28,10 @@ const OwnerController = {
       await OwnerModel.updateById(conn, id, req.body);
 
       // Logging aktivitas: update owner
-const store_id = req.user.store_id || req.body.store_id;
-if (!store_id) {
-  throw new Error('store_id wajib ada untuk logging');
-}
+// const store_id = req.user.store_id || req.body.store_id;
+// if (!store_id) {
+//   throw new Error('store_id wajib ada untuk logging');
+// }
 
 // Logging aktivitas: update owner
 await ActivityLogModel.create(conn, {
