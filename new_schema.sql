@@ -28,13 +28,14 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 -- Table: clients
 -- --------------------------------------------------------
 CREATE TABLE clients (
-  id INT(11) NOT NULL,
+  id INT(11) NOT NULL AUTO_INCREMENT,
   owner_id INT(11) DEFAULT NULL,
   user_id INT(11) DEFAULT NULL,
   db_name VARCHAR(100) DEFAULT NULL,
   db_user VARCHAR(100) DEFAULT NULL,
   db_password VARCHAR(100) DEFAULT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Table: import_logs
