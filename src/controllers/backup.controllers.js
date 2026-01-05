@@ -2,7 +2,7 @@ const { getTenantConnection } = require('../config/db');
 const ActivityLogModel = require('../models/activityLog.model');
 const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
-const { parse } = require('csv-parse/sync'); // perbaiki import
+const { parse } = require('csv-parse/sync');
 const XLSX = require('xlsx');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -133,6 +133,9 @@ exports.exportData = async (req, res) => {
 
     let data = {};
 
+    // Tentukan apakah ini export ZIP (multi-data)
+    const isZipExport = dataList.length > 1 || dataParam === 'all';
+
     if (dataParam === 'all') {
       // Semua data
       const [users] = await conn.query('SELECT * FROM users');
@@ -151,19 +154,44 @@ exports.exportData = async (req, res) => {
       if (Object.keys(data).length === 0) {
         return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
       }
-      // ZIP export
-      res.setHeader('Content-Disposition', `attachment; filename=backup_multi_${typeParam}_${Date.now()}.zip`);
+    } else if (dataMap[dataParam]) {
+      // Single data
+      data = await dataMap[dataParam]();
+    } else {
+      return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
+    }
+
+    // === ZIP EXPORT ===
+    if (isZipExport) {
+      res.setHeader('Content-Disposition', `attachment; filename=backup_multi_${Date.now()}.zip`);
       res.setHeader('Content-Type', 'application/zip');
-      const archive = archiver('zip');
+      
+      const archive = archiver('zip', {
+        zlib: { level: 9 } // Kompresi maksimum
+      });
+
+      // Handle archive errors
+      archive.on('error', (err) => {
+        console.error('Archive error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Gagal membuat arsip ZIP', error: err.message });
+        }
+      });
+
+      // Pipe archive ke response
       archive.pipe(res);
 
+      // Tambahkan file ke archive
       for (const [table, rows] of Object.entries(data)) {
         let buffer, filename;
+        
         if (typeParam === 'excel' || typeParam === 'xlsx') {
           const workbook = new ExcelJS.Workbook();
           const ws = workbook.addWorksheet(table);
-          if (rows.length > 0) ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
-          rows.forEach(row => ws.addRow(row));
+          if (rows.length > 0) {
+            ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
+            rows.forEach(row => ws.addRow(row));
+          }
           buffer = await workbook.xlsx.writeBuffer();
           filename = `${table}.xlsx`;
         } else if (typeParam === 'csv') {
@@ -175,21 +203,32 @@ exports.exportData = async (req, res) => {
           buffer = Buffer.from(JSON.stringify(rows, null, 2), 'utf-8');
           filename = `${table}.json`;
         }
-        archive.append(buffer, { name: filename });
+        
+        if (buffer) {
+          archive.append(buffer, { name: filename });
+        }
       }
-      archive.finalize();
-      await ActivityLogModel.create(conn, {
-        user_id: req.user.id,
-        store_id: req.user.store_id || null,
-        action: 'backup_data',
-        detail: `Backup data kategori ${dataList.join(',')} dalam format zip (${typeParam})`
+
+      // Finalize archive (akan mengirim response secara otomatis)
+      await archive.finalize();
+
+      // Log activity setelah archive selesai
+      archive.on('end', async () => {
+        try {
+          await ActivityLogModel.create(conn, {
+            user_id: req.user.id,
+            store_id: req.user.store_id || null,
+            action: 'backup_data',
+            detail: `Backup data kategori ${dataParam === 'all' ? 'all' : dataList.join(',')} dalam format zip (${typeParam})`
+          });
+        } catch (logError) {
+          console.error('Failed to log activity:', logError);
+        } finally {
+          if (conn) await conn.release(); // Gunakan release() bukan end()
+        }
       });
-      return;
-    } else if (dataMap[dataParam]) {
-      // Single data
-      data = await dataMap[dataParam]();
-    } else {
-      return res.status(400).json({ success: false, message: 'Data kategori tidak didukung' });
+
+      return; // KELUAR DARI FUNGSI, JANGAN LANJUT!
     }
 
     // === SINGLE FILE EXPORT ===
@@ -208,28 +247,39 @@ exports.exportData = async (req, res) => {
       const workbook = new ExcelJS.Workbook();
       for (const [table, rows] of Object.entries(data)) {
         const ws = workbook.addWorksheet(table);
-        if (rows.length > 0) ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
-        rows.forEach(row => ws.addRow(row));
+        if (rows.length > 0) {
+          ws.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
+          rows.forEach(row => ws.addRow(row));
+        }
       }
       res.setHeader('Content-Disposition', `attachment; filename=backup_${dataParam}_${Date.now()}.xlsx`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       await workbook.xlsx.write(res);
-      res.end();
     } else {
       return res.status(400).json({ success: false, message: 'Format file tidak didukung' });
     }
 
-    // Log activity
+    // Log activity untuk single file export
     await ActivityLogModel.create(conn, {
       user_id: req.user.id,
       store_id: req.user.store_id || null,
       action: 'backup_data',
       detail: `Backup data kategori ${dataParam} dalam format ${typeParam}`
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Gagal export data', error: error.message });
+    console.error('Export error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal export data', error: error.message });
+    }
   } finally {
-    if (conn) await conn.end();
+    if (conn) {
+      try {
+        await conn.release(); // Gunakan release() untuk pooled connection
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
 
@@ -364,14 +414,24 @@ exports.importData = async (req, res) => {
       action: 'import_data',
       detail: 'Import data dilakukan'
     });
+
   } catch (error) {
     // Jika gagal, update status ke failed
     if (conn && importLogId) {
       await conn.query(`UPDATE import_logs SET status='failed' WHERE id=?`, [importLogId]);
     }
-    res.status(500).json({ success: false, message: 'Gagal import data', error: error.message });
+    
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal import data', error: error.message });
+    }
   } finally {
-    if (conn) await conn.end();
+    if (conn) {
+      try {
+        await conn.release(); // Gunakan release() untuk pooled connection
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
 
@@ -399,10 +459,19 @@ exports.resetData = async (req, res) => {
       action: 'reset_data',
       detail: 'Reset data dilakukan'
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Gagal reset data', error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal reset data', error: error.message });
+    }
   } finally {
-    if (conn) await conn.end();
+    if (conn) {
+      try {
+        await conn.release(); // Gunakan release() untuk pooled connection
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
 
@@ -419,9 +488,17 @@ exports.importHistory = async (req, res) => {
     );
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Gagal mengambil riwayat import', error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal mengambil riwayat import', error: error.message });
+    }
   } finally {
-    if (conn) await conn.end();
+    if (conn) {
+      try {
+        await conn.release(); // Gunakan release() untuk pooled connection
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
 
@@ -447,8 +524,16 @@ exports.importStats = async (req, res) => {
       last_import: stats.last_import
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Gagal mengambil statistik import', error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal mengambil statistik import', error: error.message });
+    }
   } finally {
-    if (conn) await conn.end();
+    if (conn) {
+      try {
+        await conn.release(); // Gunakan release() untuk pooled connection
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
