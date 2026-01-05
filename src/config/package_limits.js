@@ -4,9 +4,9 @@ const path = require('path');
 const DEFAULT_LIMITS = {
   Standard: {
     product_limit: 100,
-    user_limit: 1,
+    user_limit: 3,
     image_limit: 0,
-    role_limits: { owner: 1, admin: 0, cashier: 0, user: 0 }
+    role_limits: { owner: 1, admin: 1, cashier: 1, user: 3 }
   },
   Pro: {
     product_limit: 1000,
