@@ -1,6 +1,9 @@
 const ActivityLogModel = {
   // Insert log aktivitas
   async create(conn, { user_id, store_id, action, detail }) {
+    // <-- Tambahkan pengecekan di sini
+    if (!store_id) throw new Error("store_id tidak boleh null");
+
     await conn.execute(
       `INSERT INTO activity_logs (user_id, store_id, action, detail, created_at)
        VALUES (?, ?, ?, ?, NOW())`,
