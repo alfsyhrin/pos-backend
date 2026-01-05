@@ -68,7 +68,7 @@ const ProductModel = {
     }
 
     // VALIDATE limit/offset sebagai angka, lalu masukkan langsung ke SQL (bukan sebagai placeholder)
-    let limit = 20;
+    let limit = 1000;
     if (filters.limit !== undefined && Number.isFinite(Number(filters.limit)) && Number(filters.limit) > 0) {
       limit = Math.floor(Number(filters.limit));
     }
@@ -183,15 +183,15 @@ const ProductModel = {
   },
 
   // Search
-  async search(connOrStoreId, maybeStoreId, searchTerm, limit = 20) {
+  async search(connOrStoreId, maybeStoreId, searchTerm, limit = 1000) {
     const hasConn = connOrStoreId && typeof connOrStoreId.execute === 'function';
     const db = hasConn ? connOrStoreId : pool;
     const storeId = hasConn ? maybeStoreId : connOrStoreId;
     const term = hasConn ? searchTerm : maybeStoreId;
-    const lim = hasConn ? limit : searchTerm || 20;
+    const lim = hasConn ? limit : searchTerm || 1000;
 
     // validate limit dan masukkan langsung
-    const limVal = (lim !== undefined && Number.isFinite(Number(lim)) && Number(lim) > 0) ? Math.floor(Number(lim)) : 20;
+    const limVal = (lim !== undefined && Number.isFinite(Number(lim)) && Number(lim) > 0) ? Math.floor(Number(lim)) : 1000;
 
     try {
       const sql = `SELECT * FROM products WHERE store_id = ? AND (name LIKE ? OR sku LIKE ?) AND is_active = 1 ORDER BY name LIMIT ${limVal}`;
@@ -321,7 +321,7 @@ const ProductModel = {
     }
   },
 
-  simpleSearch: async function (conn, storeId, q, limit = 20) {
+  simpleSearch: async function (conn, storeId, q, limit = 1000) {
     let query = `SELECT * FROM products WHERE store_id = ?`;
     const params = [storeId];
 
@@ -331,7 +331,7 @@ const ProductModel = {
       params.push(term, term, term);
     }
 
-    const lim = (limit !== undefined && Number.isFinite(Number(limit)) && Number(limit) > 0) ? Math.floor(Number(limit)) : 20;
+    const lim = (limit !== undefined && Number.isFinite(Number(limit)) && Number(limit) > 0) ? Math.floor(Number(limit)) : 1000;
     query += ` LIMIT ${lim}`;
 
     const [rows] = await conn.execute(query, params);
