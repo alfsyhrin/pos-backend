@@ -296,7 +296,7 @@ async update(req, res) {
     if (!product) return response.notFound(res, 'Produk tidak ditemukan');
 
     // =======================
-    // NORMALISASI FIELD FLUTTER
+    // NORMALISASI FIELD
     // =======================
     if (req.body.sellPrice !== undefined) req.body.price = req.body.sellPrice;
     if (req.body.costPrice !== undefined) req.body.cost_price = req.body.costPrice;
@@ -305,32 +305,59 @@ async update(req, res) {
     if (req.body.promoType !== undefined) req.body.promoType = mapPromoType(req.body.promoType);
     if (req.body.promoType !== undefined) req.body.jenis_diskon = req.body.promoType;
 
-    if (req.body.jenis_diskon === 'buyxgety') {
-      req.body.nilai_diskon = null;
-      if (req.body.buyQty !== undefined) req.body.buy_qty = req.body.buyQty;
-      if (req.body.freeQty !== undefined) req.body.free_qty = req.body.freeQty;
-    } else {
-      if (req.body.promoPercent !== undefined) req.body.nilai_diskon = req.body.promoPercent;
-      if (req.body.promoAmount !== undefined) req.body.nilai_diskon = req.body.promoAmount;
-      req.body.buy_qty = null;
-      req.body.free_qty = null;
-    }
-
-    if (req.body.jenis_diskon !== undefined) req.body.jenis_diskon = sanitizeJenisDiskon(req.body.jenis_diskon);
-
+    // --- PATCH: Handle penghapusan promo ---
+    let updateData = {};
     const allowedFields = [
       'name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'is_active',
       'category', 'description', 'jenis_diskon', 'nilai_diskon',
       'buy_qty', 'free_qty', 'diskon_bundle_min_qty', 'diskon_bundle_value', 'image_url'
     ];
-    const updateData = {};
 
+    // Jika ada file gambar baru
     if (req.file) {
       updateData.image_url = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
     }
 
+    // --- PATCH: Handle penghapusan promo ---
+    // Jika jenis_diskon dikirim null/kosong, hapus semua field promo
+    if (
+      (req.body.jenis_diskon === null || req.body.jenis_diskon === undefined || req.body.jenis_diskon === '' || req.body.promoType === null || req.body.promoType === undefined || req.body.promoType === '')
+    ) {
+      updateData.jenis_diskon = null;
+      updateData.nilai_diskon = null;
+      updateData.buy_qty = null;
+      updateData.free_qty = null;
+    } else {
+      // Jika jenis_diskon ada, proses sesuai tipe
+      if (req.body.jenis_diskon === 'buyxgety') {
+        updateData.jenis_diskon = 'buyxgety';
+        updateData.nilai_diskon = null;
+        updateData.buy_qty = req.body.buyQty !== undefined ? req.body.buyQty : (req.body.buy_qty !== undefined ? req.body.buy_qty : null);
+        updateData.free_qty = req.body.freeQty !== undefined ? req.body.freeQty : (req.body.free_qty !== undefined ? req.body.free_qty : null);
+      } else if (req.body.jenis_diskon === 'percentage' || req.body.jenis_diskon === 'nominal') {
+        updateData.jenis_diskon = req.body.jenis_diskon;
+        updateData.nilai_diskon = req.body.promoPercent !== undefined ? req.body.promoPercent
+          : (req.body.promoAmount !== undefined ? req.body.promoAmount
+          : (req.body.nilai_diskon !== undefined ? req.body.nilai_diskon : null));
+        updateData.buy_qty = null;
+        updateData.free_qty = null;
+      }
+    }
+
+    // PATCH: Jika frontend kirim field promo lain sebagai null, set null juga
+    ['nilai_diskon', 'buy_qty', 'free_qty'].forEach(field => {
+      if (req.body[field] === null) updateData[field] = null;
+    });
+
+    // PATCH: Bundle fields
+    if (req.body.bundleQty !== undefined) updateData.diskon_bundle_min_qty = req.body.bundleQty;
+    if (req.body.bundleTotalPrice !== undefined) updateData.diskon_bundle_value = req.body.bundleTotalPrice;
+    if (req.body.diskon_bundle_min_qty !== undefined) updateData.diskon_bundle_min_qty = req.body.diskon_bundle_min_qty;
+    if (req.body.diskon_bundle_value !== undefined) updateData.diskon_bundle_value = req.body.diskon_bundle_value;
+
+    // PATCH: Field lain
     allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+      if (req.body[field] !== undefined && updateData[field] === undefined) updateData[field] = req.body[field];
     });
 
     // Validasi tipe data
