@@ -63,7 +63,7 @@ const UserController = {
             // Validasi username unik di tenant
             const existingUser = await UserModel.findByUsername(conn, username);
             if (existingUser) {
-                return res.status(400).json({ success: false, message: 'Username sudah digunakan di tenant, silakan pilih username lain.' });
+                return res.status(400).json({ success: false, message: 'Username sudah digunakan, silakan pilih username lain.' });
             }
 
             // Validasi username unik di global_users (database utama)
@@ -73,7 +73,7 @@ const UserController = {
                 [username]
             );
             if (globalRows.length > 0) {
-                return res.status(400).json({ success: false, message: 'Username sudah digunakan di sistem, silakan pilih username lain.' });
+                return res.status(400).json({ success: false, message: 'Username sudah digunakan, silakan pilih username lain.' });
             }
 
             // cek owner eksis di tenant
