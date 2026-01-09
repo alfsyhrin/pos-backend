@@ -14,22 +14,21 @@ const ReportController = {
 
       conn = await getTenantConnection(dbName);
 
-      // Total transaksi, pendapatan, diskon (DISKON DISET 0)
+      // Total transaksi, pendapatan, diskon
       const [summary] = await conn.query(
         `SELECT 
             COUNT(*) AS total_transaksi, 
             COALESCE(SUM(total_cost),0) AS total_pendapatan,
-            0 AS total_diskon
+            COALESCE(SUM(discount_total),0) AS total_diskon
          FROM transactions
          WHERE store_id = ? AND DATE(created_at) BETWEEN ? AND ?`,
         [store_id, start, end]
       );
 
-      // HPP/modal (totalCost) dari produk yang terjual
+      // HPP/modal (totalCost) dari produk yang terjual - BEST PRACTICE: ambil dari transaction_items
       const [hppRows] = await conn.query(
-        `SELECT SUM(p.cost_price * ti.qty) AS total_hpp
+        `SELECT COALESCE(SUM(ti.cost_price * ti.qty), 0) AS total_hpp
          FROM transaction_items ti
-         JOIN products p ON ti.product_id = p.id
          JOIN transactions t ON ti.transaction_id = t.id
          WHERE t.store_id = ? AND DATE(t.created_at) BETWEEN ? AND ?`,
         [store_id, start, end]
@@ -75,12 +74,11 @@ const ReportController = {
       const gross_profit = net_revenue - total_hpp;
       const operational_cost = 0; // default
       const net_profit = gross_profit - operational_cost;
-  const marginValue =
-  net_revenue > 0
-    ? (gross_profit / net_revenue) * 100
-    : 0;
-
-const margin = `${marginValue.toFixed(2)}%`;
+      const marginValue =
+        net_revenue > 0
+          ? (gross_profit / net_revenue) * 100
+          : 0;
+      const margin = `${marginValue.toFixed(2)}%`;
 
       return response.success(res, {
         total_transaksi: summary[0].total_transaksi,
@@ -254,16 +252,15 @@ const margin = `${marginValue.toFixed(2)}%`;
         [store_id, date]
       );
 
-const [hppRows] = await conn.query(
-  `SELECT COALESCE(SUM(ti.cost_price * ti.qty), 0) AS total_hpp
-   FROM transaction_items ti
-   JOIN transactions t ON ti.transaction_id = t.id
-   WHERE t.store_id = ? AND DATE(t.created_at) = ?`,
-  [store_id, date]
-);
+      const [hppRows] = await conn.query(
+        `SELECT COALESCE(SUM(ti.cost_price * ti.qty), 0) AS total_hpp
+         FROM transaction_items ti
+         JOIN transactions t ON ti.transaction_id = t.id
+         WHERE t.store_id = ? AND DATE(t.created_at) = ?`,
+        [store_id, date]
+      );
 
-const total_hpp = Number(hppRows[0].total_hpp) || 0;
-
+      const total_hpp = Number(hppRows[0].total_hpp) || 0;
 
 
 
@@ -419,3 +416,9 @@ const margin = `${marginValue.toFixed(2)}%`;
 };
 
 module.exports = ReportController;
+
+// Penjelasan perubahan:
+// - Perhitungan HPP (total_hpp) sekarang SELALU dari transaction_items.cost_price × qty, bukan dari products.
+// - Perhitungan total_diskon diambil dari SUM(discount_total) di tabel transactions (jika sudah diisi benar saat transaksi).
+// - Semua rumus laba, margin, dan net revenue mengikuti standar POS & akuntansi.
+// - Query SQL sudah audit-ready dan tidak akan berubah walaupun harga beli produk diubah di master products.

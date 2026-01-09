@@ -1,24 +1,9 @@
 const UserModel = require('../models/user.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const bcrypt = require('bcryptjs');
-const { getTenantConnection } = require('../config/db');
+const { getTenantConnection, getMainConnection } = require('../config/db');
 const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 const response = require('../utils/response');
-
-// const USER_LIMITS = {
-//   'Standard': 1,
-//   'Pro': 6,
-//   'Eksklusif': 11
-// };
-
-// policy default = 'per_role'
-// const USER_LIMIT_POLICY = process.env.USER_LIMIT_POLICY || 'per_role';
-// role limits per paket (owner, admin, cashier)
-// const PLAN_ROLE_LIMITS = {
-//   'Standard':  { owner: 1, admin: 0, cashier: 0, user: 0 },
-//   'Pro':       { owner: 1, admin: 1, cashier: 4, user: 6 },
-//   'Eksklusif': { owner: 1, admin: 2, cashier: 8, user: 11 }
-// };
 
 const UserController = {
     // List user by store
@@ -54,7 +39,7 @@ const UserController = {
 
     // Create user
     async create(req, res) {
-        let conn;
+        let conn, mainConn;
         try {
             const storeIdFromParams = req.params.store_id;
             const { store_id: store_id_from_body, name, username, email, password, role } = req.body;
@@ -64,7 +49,6 @@ const UserController = {
             const dbName = req.user?.db_name;
             if (!dbName) return res.status(400).json({ success: false, message: 'Tenant database (db_name) tidak ditemukan di token.' });
 
-            // fallback: jika role butuh store dan tidak diberikan -> pakai default store
             if ((role === 'admin' || role === 'cashier') && !store_id) {
                 conn = await getTenantConnection(dbName);
                 const [stores] = await conn.query('SELECT id FROM stores WHERE owner_id = ? LIMIT 1', [owner_id]);
@@ -74,6 +58,22 @@ const UserController = {
                 store_id = stores[0].id;
             } else {
                 if (!conn) conn = await getTenantConnection(dbName);
+            }
+
+            // Validasi username unik di tenant
+            const existingUser = await UserModel.findByUsername(conn, username);
+            if (existingUser) {
+                return res.status(400).json({ success: false, message: 'Username sudah digunakan di tenant, silakan pilih username lain.' });
+            }
+
+            // Validasi username unik di global_users (database utama)
+            mainConn = await getMainConnection();
+            const [globalRows] = await mainConn.query(
+                'SELECT id FROM global_users WHERE username = ?',
+                [username]
+            );
+            if (globalRows.length > 0) {
+                return res.status(400).json({ success: false, message: 'Username sudah digunakan di sistem, silakan pilih username lain.' });
             }
 
             // cek owner eksis di tenant
@@ -104,21 +104,15 @@ const UserController = {
               return response.badRequest(res, `Batas user role ${role} (${roleLimit}) untuk paket ${plan} telah tercapai`);
             }
 
-            // cek limit
-            // if (USER_LIMIT_POLICY === 'total') {
-            //     const maxUser = USER_LIMITS[plan];
-            //     const [users] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ?', [owner_id]);
-            //     if (users[0].total >= maxUser) return res.status(400).json({ message: 'Batas jumlah user sudah tercapai untuk paket ini.' });
-            // } else {
-            //     const limitForRole = PLAN_ROLE_LIMITS[plan]?.[role] ?? 0;
-            //     const [roleCount] = await conn.query('SELECT COUNT(*) AS total FROM users WHERE owner_id = ? AND role = ?', [owner_id, role]);
-            //     if (roleCount[0].total >= limitForRole) {
-            //       return res.status(400).json({ message: `Batas user untuk role "${role}" pada paket ${plan} sudah tercapai.` });
-            //     }
-            // }
-
             const hashed = await bcrypt.hash(password, 10);
             const userId = await UserModel.create(conn, { owner_id, store_id, name, username, email, password: hashed, role });
+
+            // Insert ke global_users
+            await mainConn.query(
+                'INSERT INTO global_users (username, email, name, tenant_db, tenant_user_id) VALUES (?, ?, ?, ?, ?)',
+                [username, email, name, dbName, userId]
+            );
+
             // Logging aktivitas: tambah user
             await ActivityLogModel.create(conn, {
               user_id: req.user.id,
@@ -131,12 +125,13 @@ const UserController = {
             res.status(500).json({ success: false, message: 'Gagal menambah user', error: error.message });
         } finally {
             if (conn) await conn.end();
+            if (mainConn) await mainConn.end();
         }
     },
 
     // Update user (termasuk nonaktifkan)
     async update(req, res) {
-        let conn;
+        let conn, mainConn;
         try {
             const { id } = req.params;
             const { name, username, email, password, role, is_active } = req.body;
@@ -154,13 +149,28 @@ const UserController = {
                 return res.status(403).json({ success: false, message: 'Owner hanya bisa update user di tokonya.' });
             }
 
+            // Validasi username unik jika diubah
+            if (username && username !== userToUpdate.username) {
+                // Cek di tenant
+                const existingUser = await UserModel.findByUsername(conn, username);
+                if (existingUser && existingUser.id !== Number(id)) {
+                    return res.status(400).json({ success: false, message: 'Username sudah digunakan di tenant, silakan pilih username lain.' });
+                }
+                // Cek di global_users
+                mainConn = await getMainConnection();
+                const [globalRows] = await mainConn.query(
+                    'SELECT id FROM global_users WHERE username = ? AND NOT (tenant_db = ? AND tenant_user_id = ?)',
+                    [username, dbName, id]
+                );
+                if (globalRows.length > 0) {
+                    return res.status(400).json({ success: false, message: 'Username sudah digunakan di sistem, silakan pilih username lain.' });
+                }
+            }
+
             // --- Tambahan validasi limit role ---
-            // Jika role diubah, cek limit role baru
             let newRole = role !== undefined ? role : userToUpdate.role;
             if (newRole === 'admin' || newRole === 'cashier') {
-                // Jika role berubah atau tetap, dan user sebelumnya bukan role tsb
                 if (userToUpdate.role !== newRole) {
-                    // Ambil plan
                     const pool = require('../config/db');
                     const [subs] = await pool.query('SELECT plan FROM subscriptions WHERE owner_id = ?', [userToUpdate.owner_id]);
                     const plan = subs[0]?.plan || 'Standard';
@@ -183,6 +193,21 @@ const UserController = {
 
             await UserModel.update(conn, id, updateData);
 
+            // Update global_users jika username/email/name diubah
+            if (username || email || name) {
+                mainConn = mainConn || await getMainConnection();
+                await mainConn.query(
+                    'UPDATE global_users SET username = ?, email = ?, name = ? WHERE tenant_db = ? AND tenant_user_id = ?',
+                    [
+                        username || userToUpdate.username,
+                        email || userToUpdate.email,
+                        name || userToUpdate.name,
+                        dbName,
+                        id
+                    ]
+                );
+            }
+
             // Logging aktivitas: edit user
             await ActivityLogModel.create(conn, {
                 user_id: req.user.id,
@@ -195,6 +220,7 @@ const UserController = {
             res.status(500).json({ success: false, message: 'Gagal update user', error: error.message });
         } finally {
             if (conn) await conn.end();
+            if (mainConn) await mainConn.end();
         }
     },
 
