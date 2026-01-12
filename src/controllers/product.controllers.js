@@ -260,12 +260,17 @@ async create(req, res) {
       const product = await ProductModel.findById(conn, productId, storeId);
       if (!product) return response.notFound(res, 'Produk tidak ditemukan');
 
-      if (product.jenis_diskon && product.nilai_diskon) {
-        let finalPrice = product.price;
-        if (product.jenis_diskon === 'percentage') finalPrice -= (finalPrice * product.nilai_diskon / 100);
-        else if (product.jenis_diskon === 'nominal') finalPrice -= product.nilai_diskon;
-        product.final_price = finalPrice;
+      // === Tambahkan simulasi harga final untuk bundle ===
+      let finalPrice = product.price;
+      if (product.jenis_diskon === 'percentage' && product.nilai_diskon) {
+        finalPrice -= (finalPrice * product.nilai_diskon / 100);
+      } else if (product.jenis_diskon === 'nominal' && product.nilai_diskon) {
+        finalPrice -= product.nilai_diskon;
+      } else if (product.jenis_diskon === 'bundle' && product.diskon_bundle_min_qty && product.diskon_bundle_value) {
+        // Simulasi: jika beli sebanyak bundle min qty, harga total = bundle value
+        finalPrice = Number(product.diskon_bundle_value);
       }
+      product.final_price = finalPrice;
 
       return response.success(res, product, 'Data produk berhasil diambil');
     } catch (error) {

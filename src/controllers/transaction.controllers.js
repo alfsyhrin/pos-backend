@@ -3,6 +3,7 @@ const ProductModel = require('../models/product.model');
 const ActivityLogModel = require('../models/activityLog.model');
 const response = require('../utils/response');
 const { getTenantConnection } = require('../config/db');
+const { calculateBundlePrice } = require('../utils/pricing'); // Tambahkan ini
 
 function mapTransactionToFrontend(tx, items = []) {
   return {
@@ -97,14 +98,18 @@ const TransactionController = {
                 // Harga produk dari database
                 const itemGross = product.price * item.quantity;
                 let discountAmount = 0;
+                let netSubtotal = itemGross;
 
+                // === LOGIKA DISKON ===
                 // Percentage
                 if (item.discount_type === 'percentage' && item.discount_value > 0) {
                     discountAmount = itemGross * (item.discount_value / 100);
+                    netSubtotal = itemGross - discountAmount;
                 }
                 // Nominal
                 else if (item.discount_type === 'nominal' && item.discount_value > 0) {
                     discountAmount = Math.min(item.discount_value, itemGross);
+                    netSubtotal = itemGross - discountAmount;
                 }
                 // Buy X Get Y
                 else if (item.discount_type === 'buyxgety' && item.buy_qty > 0 && item.free_qty > 0) {
@@ -112,17 +117,26 @@ const TransactionController = {
                     const y = item.free_qty;
                     const totalQty = item.quantity;
                     const groupQty = x + y;
-                    // Paid qty = (totalQty ~/ (x + y)) * x + (totalQty % (x + y))
                     const paidQty = Math.floor(totalQty / groupQty) * x + (totalQty % groupQty);
-                    // Bonus qty = totalQty - paidQty
                     discountAmount = (totalQty - paidQty) * product.price;
-                    // Subtotal yang dibayar = paidQty * product.price
+                    netSubtotal = paidQty * product.price;
+                }
+                // === BUNDLE DISCOUNT ===
+                else if (
+                    (item.discount_type === 'bundle' || product.jenis_diskon === 'bundle') &&
+                    (item.bundleQty > 0 || product.diskon_bundle_min_qty > 0) &&
+                    (item.bundleTotalPrice > 0 || product.diskon_bundle_value > 0)
+                ) {
+                    // Ambil data bundle dari item jika ada, jika tidak dari produk
+                    const bundleQty = item.bundleQty || product.diskon_bundle_min_qty;
+                    const bundleValue = item.bundleTotalPrice || product.diskon_bundle_value;
+                    const bundleTotal = calculateBundlePrice(item.quantity, product.price, bundleQty, bundleValue);
+                    discountAmount = itemGross - bundleTotal;
+                    netSubtotal = bundleTotal;
                 }
 
                 // Safety
                 if (discountAmount > itemGross) discountAmount = itemGross;
-
-                const netSubtotal = itemGross - discountAmount;
 
                 processedItems.push({
                     product_id: product.id,

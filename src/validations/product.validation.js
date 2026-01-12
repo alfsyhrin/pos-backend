@@ -58,6 +58,18 @@ const productValidation = {
             }
         }
 
+        // === Tambahkan validasi untuk bundle ===
+        if (jenis_diskon === 'bundle') {
+            const bundleQty = req.body.bundleQty ?? req.body.diskon_bundle_min_qty;
+            const bundleTotalPrice = req.body.bundleTotalPrice ?? req.body.diskon_bundle_value;
+            if (!bundleQty || isNaN(parseInt(bundleQty)) || parseInt(bundleQty) <= 0) {
+                errors.push('Jumlah minimal beli bundle (bundleQty) harus diisi dan > 0 untuk promo Bundle');
+            }
+            if (!bundleTotalPrice || isNaN(parseFloat(bundleTotalPrice)) || parseFloat(bundleTotalPrice) <= 0) {
+                errors.push('Harga bundle (bundleTotalPrice) harus diisi dan > 0 untuk promo Bundle');
+            }
+        }
+
         if (errors.length > 0) {
             return res.status(400).json({
                 success: false,
