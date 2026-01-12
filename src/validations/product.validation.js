@@ -124,6 +124,21 @@ const productValidation = {
         if (req.body.sku && req.body.sku.length > 50) {
             errors.push('SKU maksimal 50 karakter');
         }
+
+        if (req.body.bundleQty !== undefined) {
+            if (isNaN(parseInt(req.body.bundleQty)) || parseInt(req.body.bundleQty) <= 0) {
+                errors.push('Jumlah minimal beli bundle (bundleQty) harus berupa angka positif');
+            } else {
+                req.body.bundleQty = parseInt(req.body.bundleQty);
+            }
+        }
+        if (req.body.bundleTotalPrice !== undefined) {
+            if (isNaN(parseFloat(req.body.bundleTotalPrice)) || parseFloat(req.body.bundleTotalPrice) <= 0) {
+                errors.push('Harga bundle (bundleTotalPrice) harus diisi dan > 0 untuk promo Bundle');
+            } else {
+                req.body.bundleTotalPrice = parseFloat(req.body.bundleTotalPrice);
+            }
+        }
         
         if (errors.length > 0) {
             return res.status(400).json({

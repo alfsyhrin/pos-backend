@@ -21,7 +21,7 @@ const { getPackageLimit, getRoleLimit } = require('../config/package_limits');
 
 function sanitizeJenisDiskon(val) {
   if (typeof val !== 'string') return null;
-  const allowed = ['percentage', 'nominal', 'buyxgety'];
+  const allowed = ['percentage', 'nominal', 'buyxgety', 'bundle']; // <-- tambahkan 'bundle'
   return allowed.includes(val) ? val : null;
 }
 
@@ -346,6 +346,12 @@ async update(req, res) {
           : (req.body.nilai_diskon !== undefined ? req.body.nilai_diskon : null));
         updateData.buy_qty = null;
         updateData.free_qty = null;
+      } else if (req.body.jenis_diskon === 'bundle') {
+        updateData.jenis_diskon = 'bundle';
+        updateData.nilai_diskon = null;
+        updateData.buy_qty = null;
+        updateData.free_qty = null;
+        // bundleQty dan bundleTotalPrice sudah di-handle di bawah
       }
     }
 
