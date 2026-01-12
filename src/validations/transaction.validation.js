@@ -4,14 +4,16 @@ const transactionItemSchema = Joi.object({
   product_id: Joi.number().required(),
   quantity: Joi.number().integer().min(1).required(),
   discount_type: Joi.string()
-    .valid('percentage', 'nominal', 'buyxgety', 'bundle') // ⬅️ Tambahkan 'bundle'
+    .valid('percentage', 'nominal', 'buyxgety', 'bundle')
     .allow(null),
   discount_value: Joi.number().min(0).allow(null),
   buy_qty: Joi.number().integer().min(1).allow(null),
   free_qty: Joi.number().integer().min(1).allow(null),
-  // Tambahkan validasi bundle jika ingin lebih ketat
+  // Bundle fields (tambahkan agar diterima backend)
   bundleQty: Joi.number().integer().min(1).allow(null),
   bundleTotalPrice: Joi.number().min(0).allow(null),
+  diskon_bundle_min_qty: Joi.number().integer().min(1).allow(null),      // ⬅️ Tambahkan ini
+  diskon_bundle_value: Joi.number().min(0).allow(null),                 // ⬅️ Tambahkan ini
   notes: Joi.string().allow('', null)
 });
 
