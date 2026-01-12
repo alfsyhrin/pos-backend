@@ -375,11 +375,14 @@ async update(req, res) {
     if (updateData.price !== undefined) {
       const priceVal = parseFloat(updateData.price);
       if (isNaN(priceVal) || priceVal < 0) return response.badRequest(res, 'Harga harus berupa angka positif');
+      // Batas maksimal DECIMAL(10,2) adalah 99999999.99
+      if (priceVal > 99999999.99) return response.badRequest(res, 'Harga terlalu besar');
       updateData.price = priceVal;
     }
     if (updateData.cost_price !== undefined) {
       const costVal = parseFloat(updateData.cost_price);
       if (isNaN(costVal) || costVal < 0) return response.badRequest(res, 'Harga modal harus berupa angka positif');
+      if (costVal > 999999999999999999.99) return response.badRequest(res, 'Harga modal terlalu besar');
       updateData.cost_price = costVal;
     }
     if (updateData.stock !== undefined) {
