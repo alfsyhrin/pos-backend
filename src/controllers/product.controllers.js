@@ -332,6 +332,8 @@ async update(req, res) {
       updateData.nilai_diskon = null;
       updateData.buy_qty = null;
       updateData.free_qty = null;
+      updateData.diskon_bundle_min_qty = null;
+      updateData.diskon_bundle_value = null;
     } else {
       // Jika jenis_diskon ada, proses sesuai tipe
       if (req.body.jenis_diskon === 'buyxgety') {
@@ -339,6 +341,8 @@ async update(req, res) {
         updateData.nilai_diskon = null;
         updateData.buy_qty = req.body.buyQty !== undefined ? req.body.buyQty : (req.body.buy_qty !== undefined ? req.body.buy_qty : null);
         updateData.free_qty = req.body.freeQty !== undefined ? req.body.freeQty : (req.body.free_qty !== undefined ? req.body.free_qty : null);
+        updateData.diskon_bundle_min_qty = null;
+        updateData.diskon_bundle_value = null;
       } else if (req.body.jenis_diskon === 'percentage' || req.body.jenis_diskon === 'nominal') {
         updateData.jenis_diskon = req.body.jenis_diskon;
         updateData.nilai_diskon = req.body.promoPercent !== undefined ? req.body.promoPercent
@@ -346,12 +350,25 @@ async update(req, res) {
           : (req.body.nilai_diskon !== undefined ? req.body.nilai_diskon : null));
         updateData.buy_qty = null;
         updateData.free_qty = null;
+        updateData.diskon_bundle_min_qty = null;
+        updateData.diskon_bundle_value = null;
       } else if (req.body.jenis_diskon === 'bundle') {
         updateData.jenis_diskon = 'bundle';
         updateData.nilai_diskon = null;
         updateData.buy_qty = null;
         updateData.free_qty = null;
-        // bundleQty dan bundleTotalPrice sudah di-handle di bawah
+
+        // --- VALIDASI BUNDLE WAJIB ---
+        let bundleQty = req.body.bundleQty ?? req.body.diskon_bundle_min_qty;
+        let bundleTotalPrice = req.body.bundleTotalPrice ?? req.body.diskon_bundle_value;
+        if (!bundleQty || isNaN(parseInt(bundleQty)) || parseInt(bundleQty) <= 0) {
+          return response.badRequest(res, 'Bundle Qty harus diisi dan > 0 untuk diskon bundle');
+        }
+        if (!bundleTotalPrice || isNaN(parseFloat(bundleTotalPrice)) || parseFloat(bundleTotalPrice) <= 0) {
+          return response.badRequest(res, 'Bundle Total Price harus diisi dan > 0 untuk diskon bundle');
+        }
+        updateData.diskon_bundle_min_qty = parseInt(bundleQty);
+        updateData.diskon_bundle_value = parseFloat(bundleTotalPrice);
       }
     }
 
@@ -360,11 +377,15 @@ async update(req, res) {
       if (req.body[field] === null) updateData[field] = null;
     });
 
-    // PATCH: Bundle fields
-    if (req.body.bundleQty !== undefined) updateData.diskon_bundle_min_qty = req.body.bundleQty;
-    if (req.body.bundleTotalPrice !== undefined) updateData.diskon_bundle_value = req.body.bundleTotalPrice;
-    if (req.body.diskon_bundle_min_qty !== undefined) updateData.diskon_bundle_min_qty = req.body.diskon_bundle_min_qty;
-    if (req.body.diskon_bundle_value !== undefined) updateData.diskon_bundle_value = req.body.diskon_bundle_value;
+    // PATCH: Bundle fields (jaga-jaga jika frontend kirim field bundle langsung)
+    if (req.body.bundleQty !== undefined && updateData.diskon_bundle_min_qty === undefined)
+      updateData.diskon_bundle_min_qty = req.body.bundleQty;
+    if (req.body.bundleTotalPrice !== undefined && updateData.diskon_bundle_value === undefined)
+      updateData.diskon_bundle_value = req.body.bundleTotalPrice;
+    if (req.body.diskon_bundle_min_qty !== undefined && updateData.diskon_bundle_min_qty === undefined)
+      updateData.diskon_bundle_min_qty = req.body.diskon_bundle_min_qty;
+    if (req.body.diskon_bundle_value !== undefined && updateData.diskon_bundle_value === undefined)
+      updateData.diskon_bundle_value = req.body.diskon_bundle_value;
 
     // PATCH: Field lain
     allowedFields.forEach(field => {
@@ -375,7 +396,6 @@ async update(req, res) {
     if (updateData.price !== undefined) {
       const priceVal = parseFloat(updateData.price);
       if (isNaN(priceVal) || priceVal < 0) return response.badRequest(res, 'Harga harus berupa angka positif');
-      // Batas maksimal DECIMAL(10,2) adalah 99999999.99
       if (priceVal > 99999999.99) return response.badRequest(res, 'Harga terlalu besar');
       updateData.price = priceVal;
     }
