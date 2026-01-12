@@ -411,6 +411,13 @@ async update(req, res) {
       updateData.stock = stockVal;
     }
 
+    // PATCH: Pastikan field diskon SELALU diikutkan dalam update, walaupun nilainya null
+    ['jenis_diskon', 'nilai_diskon', 'diskon_bundle_min_qty', 'diskon_bundle_value', 'buy_qty', 'free_qty'].forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
     const isUpdated = await ProductModel.update(conn, productId, storeId, updateData);
     if (!isUpdated) return response.error(res, 'Gagal mengupdate produk', 400);
 
