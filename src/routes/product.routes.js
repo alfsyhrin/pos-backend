@@ -4,7 +4,7 @@ const ProductController = require('../controllers/product.controllers');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const checkTenant = require('../middleware/checkTenant'); // Tambahkan ini
-const checkSubscription = require('../middleware/checkSubscription'); // pastikan penamaan benar
+// const checkSubscription = require('../middleware/checkSubscription'); // pastikan penamaan benar
 
 // Create Product (protected route)
 router.post(
@@ -24,30 +24,29 @@ router.put(
   '/:store_id/products/:id',
   authMiddleware(['owner', 'admin']),
   checkTenant,
-  checkSubscription, // perbaiki di sini
+  // checkSubscription, // perbaiki di sini
   upload.single('image'),
   ProductController.update
 );
 
 // Delete Product (protected route)
-router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, checkSubscription, ProductController.delete);
+router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, ProductController.delete);
 
 // Get Low Stock Products (protected route)
-router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.getLowStock);
+router.get('/:store_id/products/low-stock', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getLowStock);
 
 // Statistik produk
-router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.getStats);
+router.get('/:store_id/products/stats', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getStats);
 
 // Find Product by Barcode (protected route)
-router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription,ProductController.findByBarcode);
+router.get('/:store_id/products/barcode/:barcode', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.findByBarcode);
 
 // Search products
-router.get('/:store_id/products/search', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.search);
+router.get('/:store_id/products/search', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.search);
 
 // Get Single Product by ID (protected route) -- HARUS PALING BAWAH!
-router.get('/:store_id/products/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.getById);
-
+router.get('/:store_id/products/:id', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getById);
 // Endpoint upload gambar produk
-router.post('/:store_id/upload-image', authMiddleware(['owner', 'admin']), checkTenant, checkSubscription, upload.single('image'), ProductController.uploadProductImage);
+router.post('/:store_id/upload-image', authMiddleware(['owner', 'admin']), checkTenant, upload.single('image'), ProductController.uploadProductImage);
 
 module.exports = router;

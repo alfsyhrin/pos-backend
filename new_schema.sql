@@ -181,6 +181,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   nilai_diskon DECIMAL(10,2) DEFAULT NULL,
   buy_qty INT(11) DEFAULT NULL,
   free_qty INT(11) DEFAULT NULL,
+  diskon_bundle_total DECIMAL(12,2) DEFAULT 0,
+  diskon_bundle_min_qty INT DEFAULT 0,
+  diskon_bundle_value DECIMAL(12,2) DEFAULT 0,
   role VARCHAR(20),
   is_owner BOOLEAN,
   PRIMARY KEY (id),
@@ -200,6 +203,10 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   price DECIMAL(10,2) NOT NULL,
   cost_price DECIMAL(10,2) NOT NULL DEFAULT 0,  -- ← KOMA DITAMBAH
   subtotal DECIMAL(10,2) NOT NULL,
+  discount_type ENUM('percentage', 'nominal', 'buyxgety', 'bundle') DEFAULT NULL,
+  discount_value DECIMAL(10,2) DEFAULT 0,
+  discount_amount DECIMAL(12,2) DEFAULT 0,
+  diskon_bundle_value DECIMAL(12,2) DEFAULT 0,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
