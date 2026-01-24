@@ -4,6 +4,7 @@ const TransactionController = require('../controllers/transaction.controllers');
 const authMiddleware = require('../middleware/auth');
 const checkTenant = require('../middleware/checkTenant');
 const { createTransactionSchema, updateTransactionSchema } = require('../validations/transaction.validation');
+const checkSubscription = require('../middleware/checkSubscription');
 
 // Create Transaction (protected route)
 router.post(
@@ -17,6 +18,7 @@ router.post(
     }
     next();
   },
+  checkSubscription,
   TransactionController.create
 );
 
@@ -25,6 +27,7 @@ router.post(
   '/:store_id/transactions/complete',
   authMiddleware(['admin', 'cashier']),
   checkTenant,
+  checkSubscription,
   TransactionController.completeTransaction
 );
 
@@ -41,6 +44,7 @@ router.get(
   '/:store_id/transactions',
   authMiddleware(['owner', 'admin', 'cashier']),
   checkTenant,
+  checkSubscription,
   TransactionController.getAll
 );
 
@@ -49,6 +53,7 @@ router.get(
   '/:store_id/transactions/:id',
   authMiddleware(['owner', 'admin', 'cashier']),
   checkTenant,
+  checkSubscription,
   TransactionController.getById
 );
 
@@ -64,6 +69,7 @@ router.put(
     }
     next();
   },
+  checkSubscription,
   TransactionController.update
 );
 
@@ -72,6 +78,7 @@ router.delete(
   '/:store_id/transactions/:transaction_id',
   authMiddleware(['owner', 'admin']),
   checkTenant,
+  checkSubscription,
   TransactionController.delete
 );
 
