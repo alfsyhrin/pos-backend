@@ -4,14 +4,14 @@ const ProductController = require('../controllers/product.controllers');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const checkTenant = require('../middleware/checkTenant'); // Tambahkan ini
-const checkSubscription = require('../middleware/checkSubscription');
+const checkSubscription = require('../middleware/checkSubscription'); // pastikan penamaan benar
 
 // Create Product (protected route)
 router.post(
   '/:store_id/products',
   authMiddleware(['owner', 'admin']),
   checkTenant,
-  checkSubcription,
+  checkSubscription, // perbaiki di sini
   upload.single('image'), // <-- tambahkan ini sebelum controller!
   ProductController.create
 );
@@ -20,7 +20,14 @@ router.post(
 router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.getAll);
 
 // Update Product (protected route)
-router.put('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, checkSubcription, upload.single('image'), ProductController.update);
+router.put(
+  '/:store_id/products/:id',
+  authMiddleware(['owner', 'admin']),
+  checkTenant,
+  checkSubscription, // perbaiki di sini
+  upload.single('image'),
+  ProductController.update
+);
 
 // Delete Product (protected route)
 router.delete('/:store_id/products/:id', authMiddleware(['owner', 'admin']), checkTenant, checkSubscription, ProductController.delete);
