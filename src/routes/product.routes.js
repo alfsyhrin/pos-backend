@@ -10,8 +10,7 @@ const checkTenant = require('../middleware/checkTenant'); // Tambahkan ini
 router.post(
   '/:store_id/products',
   authMiddleware(['owner', 'admin']),
-  checkTenant,
-  checkSubscription, // perbaiki di sini
+  checkTenant, // perbaiki di sini
   upload.single('image'), // <-- tambahkan ini sebelum controller!
   ProductController.create
 );
