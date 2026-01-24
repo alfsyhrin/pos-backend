@@ -17,7 +17,7 @@ router.post(
 );
 
 // Get All Products for a Store (protected route)
-router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, checkSubscription, ProductController.getAll);
+router.get('/:store_id/products', authMiddleware(['owner', 'admin', 'cashier']), checkTenant, ProductController.getAll);
 
 // Update Product (protected route)
 router.put(
