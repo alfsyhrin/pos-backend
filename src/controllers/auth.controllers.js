@@ -29,8 +29,20 @@ async login(req, res) {
     let business_name = null;
     let stores = [];
 
+    // ===== ADDED: handle superadmin in main DB (by email or username) =====
+    const [superAdminRows] = await db.query(
+      'SELECT * FROM users WHERE (email = ? OR username = ?) AND role = "superadmin"',
+      [identifier, identifier]
+    );
+    if (superAdminRows.length) {
+      user = superAdminRows[0];
+      ownerIdForToken = user.owner_id || null;
+      db_name = null;
+    }
+    // ===================================================================
+
     /* ================= OWNER LOGIN (EMAIL) ================= */
-    if (identifier.includes('@')) {
+    if (!user && identifier.includes('@')) {
       const [rows] = await db.query(
         'SELECT * FROM users WHERE email = ? AND role = "owner"',
         [identifier]
@@ -52,7 +64,7 @@ async login(req, res) {
     }
 
     /* ================= ADMIN / CASHIER LOGIN ================= */
-    else {
+    if (!user) {
       /**
        * Cari tenant berdasarkan username
        * (username unik per tenant)
