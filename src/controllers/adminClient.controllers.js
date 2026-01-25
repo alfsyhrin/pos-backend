@@ -12,7 +12,7 @@ const AdminClientController = {
         SELECT 
           o.id, o.business_name, o.email, o.phone, o.created_at,
           o.status AS owner_status,
-          c.db_name, c.db_user, c.db_password,
+          c.db_name, c.db_user, c.db_password, c.db_status,
           -- ambil subscription terakhir walau status bukan 'Aktif'
           (SELECT s.plan FROM subscriptions s WHERE s.owner_id = o.id ORDER BY s.end_date DESC LIMIT 1) AS plan,
           (SELECT s.status FROM subscriptions s WHERE s.owner_id = o.id ORDER BY s.end_date DESC LIMIT 1) AS subscription_status,
@@ -173,7 +173,7 @@ const AdminClientController = {
       const [[client]] = await conn.query(`
         SELECT 
           o.id, o.business_name, o.email, o.phone, o.created_at, o.status AS owner_status,
-          c.db_name, c.db_user, c.db_password,
+          c.db_name, c.db_user, c.db_password, c.db_status,
           (SELECT s.plan FROM subscriptions s WHERE s.owner_id = o.id ORDER BY s.end_date DESC LIMIT 1) AS plan,
           (SELECT s.status FROM subscriptions s WHERE s.owner_id = o.id ORDER BY s.end_date DESC LIMIT 1) AS subscription_status,
           (SELECT s.start_date FROM subscriptions s WHERE s.owner_id = o.id ORDER BY s.end_date DESC LIMIT 1) AS start_date,
