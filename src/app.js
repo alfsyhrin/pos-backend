@@ -19,6 +19,7 @@ const activityLogRoutes = require('./routes/activityLog.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const ownerRoutes = require('./routes/owner.routes');
 const syncRoutes = require('./routes/sync.routes');
+const adminClientRoutes = require('./routes/adminClient.routes');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api', activityLogRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', ownerRoutes);
 app.use('/sync', syncRoutes);
+app.use('/api', adminClientRoutes);
 
 // Default route
 app.get('/', (req, res) => {
