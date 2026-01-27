@@ -9,7 +9,7 @@ const DEFAULT_LIMITS = {
     role_limits: { owner: 1, admin: 1, cashier: 1, user: 3 }
   },
   Pro: {
-    product_limit: 1000,
+    product_limit: 5000,
     user_limit: 6,
     image_limit: 100,
     role_limits: { owner: 1, admin: 1, cashier: 4, user: 6 }
